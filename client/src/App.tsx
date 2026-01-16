@@ -112,6 +112,42 @@ function App() {
                 ? 'Create a new game and share the ID with your opponent.'
                 : 'Enter the game ID and password shared by your opponent.'}
             </p>
+
+            {/* About Section */}
+            <div className="mt-10 mb-20 p-6 bg-surface-light rounded-lg border border-gray-800">
+              <h2 className="text-lg font-semibold text-accent mb-4">About Paper Magic</h2>
+
+              <p className="text-gray-300 text-sm mb-4">
+                A real-time shared tabletop for playtesting Magic: The Gathering with a friend over Discord or voice chat.
+                Perfect for testing new sets before they hit Arena or MTGO.
+              </p>
+
+              <h3 className="text-sm font-semibold text-gray-200 mb-2">Features</h3>
+              <ul className="text-gray-400 text-sm space-y-1 mb-4 list-disc list-inside">
+                <li>Import decklists with card images from Scryfall</li>
+                <li>Test with preview cards from unreleased sets</li>
+                <li>Drag-and-drop cards between zones</li>
+                <li>Track life totals, counters, and tokens</li>
+                <li>Undo/redo actions and save game state</li>
+              </ul>
+
+              <h3 className="text-sm font-semibold text-gray-200 mb-2">How to Play</h3>
+              <ol className="text-gray-400 text-sm space-y-1 mb-4 list-decimal list-inside">
+                <li>Create a game and share the Game ID + password with your opponent</li>
+                <li>Both players import their decklists (paste from any deck builder)</li>
+                <li>Click "Ready" to start the game and draw opening hands</li>
+                <li>Play as you would in paper - drag cards, right-click for actions</li>
+                <li>Use keyboard shortcuts: T to tap, U to untap all, D to draw</li>
+              </ol>
+
+              <div className="mt-4 p-3 bg-surface rounded border border-gray-700">
+                <p className="text-gray-500 text-xs">
+                  <span className="text-gray-400 font-medium">Note:</span> This tool mirrors paper play and is not a rules engine.
+                  Some complex mechanics (especially in Legacy/Vintage formats) may require manual workarounds.
+                  Use your best judgment and communicate with your opponent!
+                </p>
+              </div>
+            </div>
           </div>
         )}
         </main>
