@@ -26,10 +26,14 @@ export interface Card {
   // Counters and attachments
   counters: Counter[];
   attachedTo?: string;          // instanceId of card this is attached to
+  attachedToOwner?: 0 | 1;      // Which player owns the card this is attached to (for cross-player attachments)
   attachments: string[];        // instanceIds of cards attached to this
 
   // Position on battlefield (only used when in battlefield zone)
   position?: CardPosition;
+
+  // Layer ordering for stacked cards on battlefield
+  zIndex?: number;
 }
 
 export interface Token extends Card {

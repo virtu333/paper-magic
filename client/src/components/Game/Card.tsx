@@ -7,7 +7,7 @@ const CARD_BACK_URL = '/card-back.svg';
 
 interface CardProps {
   card: CardType;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   showBack?: boolean;
   onClick?: () => void;
   onDoubleClick?: () => void;
@@ -18,9 +18,10 @@ interface CardProps {
 }
 
 const sizeClasses = {
-  sm: 'w-12',
-  md: 'w-20',
-  lg: 'w-32',
+  sm: 'w-14',   // ~56px (was w-12, 20% larger)
+  md: 'w-24',   // ~96px (was w-20, 20% larger)
+  lg: 'w-36',   // ~144px (was w-32, ~12% larger)
+  xl: 'w-64',   // 256px (unchanged, for hover preview)
 };
 
 export function Card({
@@ -160,7 +161,7 @@ function TokenDisplay({
   showBack,
 }: {
   token: Token;
-  size: 'sm' | 'md' | 'lg';
+  size: 'sm' | 'md' | 'lg' | 'xl';
   showBack?: boolean;
 }) {
   if (showBack || token.isFaceDown) {
@@ -170,8 +171,8 @@ function TokenDisplay({
   }
 
   const isCreature = token.types.toLowerCase().includes('creature');
-  const textSize = size === 'sm' ? 'text-[8px]' : size === 'md' ? 'text-[10px]' : 'text-xs';
-  const nameSize = size === 'sm' ? 'text-[9px]' : size === 'md' ? 'text-xs' : 'text-sm';
+  const textSize = size === 'sm' ? 'text-[8px]' : size === 'md' ? 'text-[10px]' : size === 'lg' ? 'text-xs' : 'text-sm';
+  const nameSize = size === 'sm' ? 'text-[9px]' : size === 'md' ? 'text-xs' : size === 'lg' ? 'text-sm' : 'text-base';
 
   return (
     <div className="w-full h-full bg-gradient-to-br from-amber-200 to-amber-100 rounded-lg border border-amber-400 flex flex-col p-1 overflow-hidden">
@@ -211,7 +212,7 @@ export function CardPlaceholder({
   onClick,
   className = '',
 }: {
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   label?: string;
   onClick?: () => void;
   className?: string;
@@ -241,7 +242,7 @@ export function CardStack({
   onClick,
 }: {
   cards: CardType[];
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   maxShow?: number;
   onClick?: () => void;
 }) {

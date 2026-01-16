@@ -26,7 +26,7 @@ export function Hand({
 }: HandProps) {
   if (cards.length === 0) {
     return (
-      <div className="h-28 flex items-center justify-center text-gray-600 text-sm">
+      <div className="h-36 flex items-center justify-center text-gray-600 text-sm">
         {isOpponent ? 'Opponent has no cards in hand' : 'Your hand is empty'}
       </div>
     );
@@ -43,7 +43,7 @@ export function Hand({
   const overlap = getOverlap();
 
   return (
-    <div className="relative h-28 flex items-center justify-center">
+    <div className="relative h-36 flex items-center justify-center">
       <div
         className="flex items-center"
         style={{

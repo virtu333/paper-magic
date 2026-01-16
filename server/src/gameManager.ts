@@ -378,6 +378,16 @@ class GameManager {
   }
 
   /**
+   * Send a message to a specific player by their ID
+   */
+  private sendToPlayer(room: GameRoom, playerId: string, message: ServerMessage): void {
+    const conn = room.players.get(playerId);
+    if (conn && conn.ws.readyState === WebSocket.OPEN) {
+      conn.ws.send(JSON.stringify(message));
+    }
+  }
+
+  /**
    * Broadcast state update to all players (sanitized per player)
    */
   private broadcastStateUpdate(room: GameRoom): void {
@@ -516,7 +526,7 @@ class GameManager {
       };
     }
 
-    const { room, playerIndex } = playerInfo;
+    const { room, playerIndex, playerId } = playerInfo;
     const player = room.state.players[playerIndex];
 
     if (!player) {
@@ -721,47 +731,181 @@ class GameManager {
       }
 
       case 'ATTACH_CARD': {
-        // Attach one card to another (e.g., aura to creature)
-        const card = player.battlefield.find(c => c.instanceId === action.instanceId);
-        const target = player.battlefield.find(c => c.instanceId === action.targetId);
-        if (card && target && card.instanceId !== target.instanceId) {
-          // Remove from any previous attachment
-          if (card.attachedTo) {
-            const prevTarget = player.battlefield.find(c => c.instanceId === card.attachedTo);
-            if (prevTarget) {
-              prevTarget.attachments = prevTarget.attachments.filter(id => id !== card.instanceId);
-            }
+        // Attach one card to another (e.g., aura to creature) - works cross-player
+        const cardInfo = this.findCardInGameState(room.state, action.instanceId);
+        const targetInfo = this.findCardInGameState(room.state, action.targetId);
+        if (!cardInfo || !targetInfo || cardInfo.zone !== 'battlefield' || targetInfo.zone !== 'battlefield') break;
+        if (cardInfo.card.instanceId === targetInfo.card.instanceId) break;
+
+        const card = cardInfo.card;
+        const target = targetInfo.card;
+
+        // Remove from any previous attachment (search both players' battlefields)
+        if (card.attachedTo) {
+          const prevTargetInfo = this.findCardInGameState(room.state, card.attachedTo);
+          if (prevTargetInfo && prevTargetInfo.zone === 'battlefield') {
+            prevTargetInfo.card.attachments = prevTargetInfo.card.attachments.filter((id: string) => id !== card.instanceId);
           }
-          // Set new attachment
-          card.attachedTo = target.instanceId;
-          if (!target.attachments) target.attachments = [];
-          if (!target.attachments.includes(card.instanceId)) {
-            target.attachments.push(card.instanceId);
-          }
-          // Move attached card to target's position
-          card.position = target.position;
         }
+
+        // Set new attachment
+        card.attachedTo = target.instanceId;
+        if (!target.attachments) target.attachments = [];
+        if (!target.attachments.includes(card.instanceId)) {
+          target.attachments.push(card.instanceId);
+        }
+        // Move attached card to target's position
+        card.position = target.position;
+        console.log(`[GameManager] Attached ${card.name} to ${target.name}`);
         break;
       }
 
       case 'DETACH_CARD': {
-        // Detach a card from its target
-        const card = player.battlefield.find(c => c.instanceId === action.instanceId);
-        if (card && card.attachedTo) {
-          const target = player.battlefield.find(c => c.instanceId === card.attachedTo);
-          if (target) {
-            target.attachments = target.attachments.filter(id => id !== card.instanceId);
-          }
-          card.attachedTo = undefined;
-          // Give it a new position slightly offset from current
-          if (card.position) {
-            card.position = {
-              x: Math.min(90, card.position.x + 10),
-              y: card.position.y,
-            };
-          }
+        // Detach a card from its target - works cross-player
+        const cardInfo = this.findCardInGameState(room.state, action.instanceId);
+        if (!cardInfo || cardInfo.zone !== 'battlefield') break;
+
+        const card = cardInfo.card;
+        if (!card.attachedTo) break;
+
+        // Find the target (could be on either player's battlefield)
+        const targetInfo = this.findCardInGameState(room.state, card.attachedTo);
+        if (targetInfo && targetInfo.zone === 'battlefield') {
+          targetInfo.card.attachments = targetInfo.card.attachments.filter((id: string) => id !== card.instanceId);
+        }
+
+        card.attachedTo = undefined;
+        // Give it a new position slightly offset from current
+        if (card.position) {
+          card.position = {
+            x: Math.min(90, card.position.x + 10),
+            y: card.position.y,
+          };
+        }
+        console.log(`[GameManager] Detached ${card.name}`);
+        break;
+      }
+
+      case 'MOVE_TO_OPPONENT_BATTLEFIELD': {
+        // Move a card from your zones to opponent's battlefield (paper Magic style)
+        const opponentIndex = playerIndex === 0 ? 1 : 0;
+        const opponent = room.state.players[opponentIndex];
+        if (!opponent) break;
+
+        const card = this.removeCardFromPlayerZone(player, action.instanceId, action.from);
+        if (card) {
+          card.isTapped = false;
+          card.isFaceDown = false;
+          card.position = action.position || { x: 50, y: 50 };
+          opponent.battlefield.push(card);
+          console.log(`[GameManager] Moved ${card.name} to opponent's battlefield`);
         }
         break;
+      }
+
+      case 'MOVE_CARD_ON_ANY_BATTLEFIELD': {
+        // Move any card on any battlefield (either player can reposition any card)
+        const cardInfo = this.findCardInGameState(room.state, action.instanceId);
+        if (!cardInfo || cardInfo.zone !== 'battlefield') break;
+
+        const { card } = cardInfo;
+        card.position = action.position;
+        console.log(`[GameManager] Repositioned ${card.name} on battlefield`);
+        break;
+      }
+
+      case 'TAKE_FROM_OPPONENT_BATTLEFIELD': {
+        // Take a card from opponent's battlefield (move it to your zone)
+        const opponentIndex = playerIndex === 0 ? 1 : 0;
+        const opponent = room.state.players[opponentIndex];
+        if (!opponent) break;
+
+        // Find and remove card from opponent's battlefield
+        const cardIndex = opponent.battlefield.findIndex(c => c.instanceId === action.instanceId);
+        if (cardIndex === -1) break;
+        const [card] = opponent.battlefield.splice(cardIndex, 1);
+
+        // Add to requesting player's zone
+        this.addCardToPlayerZone(player, card, action.to, action.position);
+        console.log(`[GameManager] ${player.name} took ${card.name} from opponent's battlefield to ${action.to}`);
+        break;
+      }
+
+      case 'BRING_TO_FRONT': {
+        // Find the card on any battlefield
+        const cardInfo = this.findCardInGameState(room.state, action.instanceId);
+        if (!cardInfo || cardInfo.zone !== 'battlefield') break;
+
+        const ownerPlayer = room.state.players[cardInfo.playerIndex];
+        if (!ownerPlayer) break;
+
+        // Find the highest zIndex on that player's battlefield (treat undefined as 1)
+        let maxZIndex = 1;
+        for (const c of ownerPlayer.battlefield) {
+          const z = c.zIndex ?? 1;
+          if (z > maxZIndex) {
+            maxZIndex = z;
+          }
+        }
+
+        // Set this card's zIndex higher
+        cardInfo.card.zIndex = maxZIndex + 1;
+        console.log(`[GameManager] Brought ${cardInfo.card.name} to front (zIndex: ${cardInfo.card.zIndex})`);
+        break;
+      }
+
+      case 'SEND_TO_BACK': {
+        // Find the card on any battlefield
+        const cardInfo = this.findCardInGameState(room.state, action.instanceId);
+        if (!cardInfo || cardInfo.zone !== 'battlefield') break;
+
+        const ownerPlayer = room.state.players[cardInfo.playerIndex];
+        if (!ownerPlayer) break;
+
+        // Bump all OTHER cards up by 1 to make room, then set this card to 1
+        for (const c of ownerPlayer.battlefield) {
+          if (c.instanceId !== cardInfo.card.instanceId) {
+            c.zIndex = (c.zIndex ?? 1) + 1;
+          }
+        }
+        cardInfo.card.zIndex = 1;
+        console.log(`[GameManager] Sent ${cardInfo.card.name} to back (zIndex: ${cardInfo.card.zIndex})`);
+        break;
+      }
+
+      case 'PEEK_OPPONENT_LIBRARY': {
+        // Peek at top N cards of opponent's library (only visible to requesting player)
+        const opponentIndex = playerIndex === 0 ? 1 : 0;
+        const opponent = room.state.players[opponentIndex];
+        if (!opponent || !opponent.deck || opponent.deck.length === 0) break;
+
+        const count = Math.min(action.count, opponent.deck.length);
+        const topCards = opponent.deck.slice(0, count);
+
+        // Send reveal message only to requesting player
+        const revealPayload: CardsRevealedPayload = {
+          revealerName: opponent.name,
+          source: `Top ${count} of ${opponent.name}'s Library`,
+          cards: topCards.map(c => ({
+            instanceId: c.instanceId,
+            name: c.name,
+            imageUri: c.imageUri,
+            backImageUri: c.backImageUri,
+          })),
+        };
+
+        this.sendToPlayer(room, playerId, {
+          type: 'CARDS_REVEALED',
+          payload: revealPayload,
+        });
+
+        this.addLogEntry(room, playerIndex, `peeked at top ${count} of opponent's library`, 'PEEK_OPPONENT_LIBRARY');
+        console.log(`[GameManager] ${player.name} peeked at top ${count} of opponent's library`);
+        // Don't broadcast state update for peek - it's private
+        return {
+          type: 'ACK',
+          payload: { action: action.type },
+        };
       }
 
       case 'MULLIGAN_KEEP': {
@@ -1025,6 +1169,37 @@ class GameManager {
       player.exilePermanent.find(c => c.instanceId === instanceId) ||
       player.deck.find(c => c.instanceId === instanceId)
     );
+  }
+
+  /**
+   * Find a card across both players' zones
+   * Returns the card, which player owns it, and which zone it's in
+   */
+  private findCardInGameState(
+    state: GameState,
+    instanceId: string
+  ): { card: any; playerIndex: 0 | 1; zone: string } | null {
+    const zones = ['hand', 'battlefield', 'graveyard', 'exileActive', 'exilePermanent', 'deck'] as const;
+
+    for (let playerIndex = 0; playerIndex < 2; playerIndex++) {
+      const player = state.players[playerIndex as 0 | 1];
+      if (!player) continue;
+
+      for (const zone of zones) {
+        const card = player[zone].find((c: any) => c.instanceId === instanceId);
+        if (card) {
+          return { card, playerIndex: playerIndex as 0 | 1, zone };
+        }
+      }
+    }
+
+    // Also check the stack (shared zone)
+    const stackCard = state.stack.find(c => c.instanceId === instanceId);
+    if (stackCard) {
+      return { card: stackCard, playerIndex: 0, zone: 'stack' }; // Stack owner doesn't matter much
+    }
+
+    return null;
   }
 
   /**

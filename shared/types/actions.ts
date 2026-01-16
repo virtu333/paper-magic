@@ -30,9 +30,21 @@ export type GameAction =
   | { type: 'REMOVE_COUNTER'; instanceId: string; counterIndex: number }
   | { type: 'SET_COUNTER'; instanceId: string; counterIndex: number; value: number }
 
-  // Attachments
+  // Attachments (same-player only)
   | { type: 'ATTACH_CARD'; instanceId: string; targetId: string }
   | { type: 'DETACH_CARD'; instanceId: string }
+
+  // Cross-battlefield movement (paper Magic style - free movement)
+  | { type: 'MOVE_TO_OPPONENT_BATTLEFIELD'; instanceId: string; from: Zone; position?: CardPosition }
+  | { type: 'MOVE_CARD_ON_ANY_BATTLEFIELD'; instanceId: string; position: CardPosition }
+  | { type: 'TAKE_FROM_OPPONENT_BATTLEFIELD'; instanceId: string; to: Zone; position?: CardPosition }
+
+  // Layer ordering for stacked cards on battlefield
+  | { type: 'BRING_TO_FRONT'; instanceId: string }
+  | { type: 'SEND_TO_BACK'; instanceId: string }
+
+  // Peek at opponent's cards (Mishra's Bauble, etc.)
+  | { type: 'PEEK_OPPONENT_LIBRARY'; count: number }
 
   // Life and player counters
   | { type: 'UPDATE_LIFE'; delta: number; note?: string }

@@ -90,7 +90,7 @@ Manual testing during development. Game state is visual - verify by playing test
 - **GitHub:** https://github.com/virtu333/paper-magic
 
 ## Current Phase
-Phase 3 - Cross-Player Interactions (PLANNED)
+Phase 3 - Cross-Player Interactions (COMPLETE)
 
 **Completed Features:**
 - Game lifecycle: lobby → mulligan → playing → sideboarding → finished
@@ -111,20 +111,7 @@ Phase 3 - Cross-Player Interactions (PLANNED)
 - **Exile zone counters** - Support for Suspend (time counters)
 - **Production deployment** - Vercel (client) + Railway (server)
 - **About page** - How-to and feature description on lobby
-
-**Next Up: Cross-Player Card Interactions**
-See detailed plan: `.claude/plans/iridescent-yawning-diffie.md`
-
-Goal: Enable cards to interact with opponent's battlefield for common MTG scenarios:
-- **Pacifism-style**: Your aura attaches to opponent's creature
-- **O-Ring/Hearse-style**: Opponent's card "exiled under" your permanent
-
-Key changes needed:
-1. Add `attachedToOwner` field to Card interface
-2. New actions: `ATTACH_TO_OPPONENT`, `TAKE_AND_ATTACH`, `MOVE_TO_OPPONENT_ZONE`
-3. Enable dropping on opponent's battlefield
-4. Add context menus: "Attach to Opponent's..." and "Exile Under..."
-5. Update server to handle cross-player card lookups
+- **Cross-player interactions** - Attach your cards to opponent's creatures (Pacifism), exile opponent's cards under your permanents (O-Ring)
 
 **Future/Optional:**
 - Smart alignment (snap cards to rows)

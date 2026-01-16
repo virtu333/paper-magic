@@ -32,11 +32,12 @@ export interface DragData {
 export interface DropData {
   zone: Zone;
   position?: { x: number; y: number };
+  isOpponentBattlefield?: boolean;
 }
 
 interface DndProviderProps {
   children: ReactNode;
-  onDragEnd: (card: CardType, sourceZone: Zone, targetZone: Zone, position?: { x: number; y: number }) => void;
+  onDragEnd: (card: CardType, sourceZone: Zone, targetZone: Zone, position?: { x: number; y: number }, isOpponentBattlefield?: boolean) => void;
 }
 
 export function DndProvider({ children, onDragEnd }: DndProviderProps) {
@@ -93,11 +94,16 @@ export function DndProvider({ children, onDragEnd }: DndProviderProps) {
             y: Math.max(5, Math.min(95, ((centerY - overRect.top) / overRect.height) * 100)),
           };
 
+          // Invert Y when dropping on opponent's battlefield (matches how Battlefield.tsx renders opponent cards)
+          if (dropData.isOpponentBattlefield) {
+            rawPosition.y = 100 - rawPosition.y;
+          }
+
           // Apply grid snapping for battlefield, free positioning for stack
           position = dropData.zone === 'battlefield' ? snapToGrid(rawPosition) : rawPosition;
         }
 
-        onDragEnd(activeCard, activeSourceZone, dropData.zone, position);
+        onDragEnd(activeCard, activeSourceZone, dropData.zone, position, dropData.isOpponentBattlefield);
       }
     }
 

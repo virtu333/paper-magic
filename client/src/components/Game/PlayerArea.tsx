@@ -41,6 +41,13 @@ interface PlayerAreaProps {
   // Attachments
   onCardAttachTo?: (card: CardType, targetId: string) => void;
   onCardDetach?: (card: CardType) => void;
+  // Layer ordering
+  onBringToFront?: (card: CardType) => void;
+  onSendToBack?: (card: CardType) => void;
+  // Peek at opponent's library
+  onPeekOpponentLibrary?: (count: number) => void;
+  // Combined cards from both battlefields for cross-player attachments
+  allBattlefieldCards?: CardType[];
 }
 
 export function PlayerArea({
@@ -73,6 +80,10 @@ export function PlayerArea({
   onDestroyToken,
   onCardAttachTo,
   onCardDetach,
+  onBringToFront,
+  onSendToBack,
+  onPeekOpponentLibrary,
+  allBattlefieldCards,
 }: PlayerAreaProps) {
   // For opponent, show minimal info. For player, show full dashboard below hand.
   if (isOpponent) {
@@ -106,6 +117,7 @@ export function PlayerArea({
               onScry={onScry}
               onRevealTop={onRevealTop}
               onRevealTopToOpponent={onRevealTopToOpponent}
+              onPeekOpponentLibrary={onPeekOpponentLibrary}
             />
             <div className="flex gap-1">
               <Graveyard
@@ -150,6 +162,9 @@ export function PlayerArea({
               onDestroyToken={onDestroyToken}
               onCardAttachTo={onCardAttachTo}
               onCardDetach={onCardDetach}
+              onBringToFront={onBringToFront}
+              onSendToBack={onSendToBack}
+              allBattlefieldCards={allBattlefieldCards}
             />
           </div>
         </div>
@@ -217,6 +232,9 @@ export function PlayerArea({
             onDestroyToken={onDestroyToken}
             onCardAttachTo={onCardAttachTo}
             onCardDetach={onCardDetach}
+            onBringToFront={onBringToFront}
+            onSendToBack={onSendToBack}
+            allBattlefieldCards={allBattlefieldCards}
           />
         </div>
       </div>

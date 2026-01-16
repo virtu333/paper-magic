@@ -25,6 +25,8 @@ interface InteractiveCardProps {
   onDestroyToken?: () => void;
   onAttachTo?: (targetId: string) => void;
   onDetach?: () => void;
+  onBringToFront?: () => void;
+  onSendToBack?: () => void;
   otherBattlefieldCards?: CardType[];
 }
 
@@ -50,6 +52,8 @@ export function InteractiveCard({
   onDestroyToken,
   onAttachTo,
   onDetach,
+  onBringToFront,
+  onSendToBack,
   otherBattlefieldCards,
 }: InteractiveCardProps) {
   // Base card rendering
@@ -98,6 +102,8 @@ export function InteractiveCard({
         onDestroyToken={onDestroyToken}
         onAttachTo={onAttachTo}
         onDetach={onDetach}
+        onBringToFront={onBringToFront}
+        onSendToBack={onSendToBack}
         otherBattlefieldCards={otherBattlefieldCards}
       >
         <div>{renderCard()}</div>

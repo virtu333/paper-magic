@@ -13,6 +13,7 @@ interface DeckProps {
   onScry?: (count: number) => void;
   onRevealTop?: (count: number) => void;
   onRevealTopToOpponent?: (count: number) => void;
+  onPeekOpponentLibrary?: (count: number) => void;
 }
 
 export function Deck({
@@ -24,6 +25,7 @@ export function Deck({
   onScry,
   onRevealTop,
   onRevealTopToOpponent,
+  onPeekOpponentLibrary,
 }: DeckProps) {
   const cardCount = cards.length;
 
@@ -102,9 +104,56 @@ export function Deck({
     </div>
   );
 
-  // Wrap in context menu for own deck
+  // For opponent's deck, add context menu with peek option (Mishra's Bauble, etc.)
   if (isOpponent) {
-    return deckContent;
+    if (!onPeekOpponentLibrary) {
+      return deckContent;
+    }
+
+    return (
+      <ContextMenu.Root>
+        <ContextMenu.Trigger asChild>
+          {deckContent}
+        </ContextMenu.Trigger>
+
+        <ContextMenu.Portal>
+          <ContextMenu.Content className="min-w-[180px] bg-gray-900 border border-gray-700 rounded-lg p-1 shadow-lg z-50">
+            {/* Peek at opponent's library (Mishra's Bauble, Gitaxian Probe, etc.) */}
+            <ContextMenu.Sub>
+              <ContextMenu.SubTrigger className="flex items-center px-2 py-1.5 text-sm text-cyan-400 hover:bg-surface-lighter rounded cursor-pointer">
+                <span className="mr-2">👁</span>
+                Peek at top
+                <span className="ml-auto text-gray-500">▸</span>
+              </ContextMenu.SubTrigger>
+              <ContextMenu.Portal>
+                <ContextMenu.SubContent className="min-w-[120px] bg-gray-900 border border-gray-700 rounded-lg p-1 shadow-lg z-50">
+                  {[1, 2, 3, 4].map((n) => (
+                    <ContextMenu.Item
+                      key={n}
+                      className="px-2 py-1.5 text-sm text-gray-200 hover:bg-surface-lighter rounded cursor-pointer"
+                      onClick={() => onPeekOpponentLibrary(n)}
+                    >
+                      Top {n} {n === 1 ? 'card' : 'cards'}
+                    </ContextMenu.Item>
+                  ))}
+                  <ContextMenu.Item
+                    className="px-2 py-1.5 text-sm text-gray-200 hover:bg-surface-lighter rounded cursor-pointer"
+                    onClick={() => {
+                      const count = prompt('How many cards to peek at?');
+                      if (count && !isNaN(parseInt(count))) {
+                        onPeekOpponentLibrary(parseInt(count));
+                      }
+                    }}
+                  >
+                    Top X cards...
+                  </ContextMenu.Item>
+                </ContextMenu.SubContent>
+              </ContextMenu.Portal>
+            </ContextMenu.Sub>
+          </ContextMenu.Content>
+        </ContextMenu.Portal>
+      </ContextMenu.Root>
+    );
   }
 
   return (

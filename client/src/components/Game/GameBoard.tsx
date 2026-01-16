@@ -46,6 +46,12 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
     );
   }
 
+  // Combine both players' battlefield cards for cross-player attachments
+  const allBattlefieldCards = [
+    ...myPlayer.battlefield,
+    ...(opponent?.battlefield ?? []),
+  ];
+
   // Card action handlers
   const handleDraw = useCallback(() => {
     sendAction({ type: 'DRAW_CARDS', count: 1 });
@@ -174,12 +180,25 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
   }, [sendAction]);
 
   const handleCardMoveTo = useCallback((card: CardType, zone: Zone, faceDown?: boolean) => {
-    // Determine source zone from card's current location
+    // Check if card is on opponent's battlefield first
+    const isOnOpponentBattlefield = opponent?.battlefield.some(c => c.instanceId === card.instanceId);
+
+    if (isOnOpponentBattlefield) {
+      sendAction({
+        type: 'TAKE_FROM_OPPONENT_BATTLEFIELD',
+        instanceId: card.instanceId,
+        to: zone,
+      });
+      return;
+    }
+
+    // Determine source zone from card's current location in your zones
     const sourceZone = myPlayer?.battlefield.some(c => c.instanceId === card.instanceId) ? 'battlefield'
       : myPlayer?.hand.some(c => c.instanceId === card.instanceId) ? 'hand'
       : myPlayer?.graveyard.some(c => c.instanceId === card.instanceId) ? 'graveyard'
       : myPlayer?.exileActive.some(c => c.instanceId === card.instanceId) ? 'exileActive'
       : myPlayer?.exilePermanent.some(c => c.instanceId === card.instanceId) ? 'exilePermanent'
+      : myPlayer?.deck.some(c => c.instanceId === card.instanceId) ? 'deck'
       : 'battlefield';
 
     sendAction({
@@ -189,7 +208,7 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
       to: zone,
       faceDown,
     });
-  }, [sendAction, myPlayer]);
+  }, [sendAction, myPlayer, opponent]);
 
   const handleCardPutOnTop = useCallback((card: CardType) => {
     sendAction({ type: 'PUT_ON_TOP', instanceIds: [card.instanceId] });
@@ -230,6 +249,27 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
     sendAction({
       type: 'DETACH_CARD',
       instanceId: card.instanceId,
+    });
+  }, [sendAction]);
+
+  const handleBringToFront = useCallback((card: CardType) => {
+    sendAction({
+      type: 'BRING_TO_FRONT',
+      instanceId: card.instanceId,
+    });
+  }, [sendAction]);
+
+  const handleSendToBack = useCallback((card: CardType) => {
+    sendAction({
+      type: 'SEND_TO_BACK',
+      instanceId: card.instanceId,
+    });
+  }, [sendAction]);
+
+  const handlePeekOpponentLibrary = useCallback((count: number) => {
+    sendAction({
+      type: 'PEEK_OPPONENT_LIBRARY',
+      count,
     });
   }, [sendAction]);
 
@@ -317,7 +357,50 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
 
   // Drag and drop handler
   const handleDragEnd = useCallback(
-    (card: CardType, sourceZone: Zone, targetZone: Zone, position?: { x: number; y: number }) => {
+    (card: CardType, sourceZone: Zone, targetZone: Zone, position?: { x: number; y: number }, isOpponentBattlefield?: boolean) => {
+      // Check if card is on opponent's battlefield (source)
+      const isCardOnOpponentBattlefield = opponent?.battlefield.some(c => c.instanceId === card.instanceId);
+
+      // Handle cards FROM opponent's battlefield
+      if (isCardOnOpponentBattlefield) {
+        if (targetZone === 'battlefield' && isOpponentBattlefield && position) {
+          // Repositioning on opponent's battlefield
+          sendAction({
+            type: 'MOVE_CARD_ON_ANY_BATTLEFIELD',
+            instanceId: card.instanceId,
+            position,
+          });
+        } else if (targetZone === 'battlefield' && !isOpponentBattlefield) {
+          // Moving from opponent's battlefield to your own battlefield
+          sendAction({
+            type: 'TAKE_FROM_OPPONENT_BATTLEFIELD',
+            instanceId: card.instanceId,
+            to: 'battlefield',
+            position,
+          });
+        } else {
+          // Moving from opponent's battlefield to another zone (hand, graveyard, etc.)
+          sendAction({
+            type: 'TAKE_FROM_OPPONENT_BATTLEFIELD',
+            instanceId: card.instanceId,
+            to: targetZone,
+          });
+        }
+        return;
+      }
+
+      // Moving card to opponent's battlefield (paper Magic style - free placement)
+      if (targetZone === 'battlefield' && isOpponentBattlefield) {
+        // Moving card to opponent's battlefield
+        sendAction({
+          type: 'MOVE_TO_OPPONENT_BATTLEFIELD',
+          instanceId: card.instanceId,
+          from: sourceZone,
+          position,
+        });
+        return;
+      }
+
       // Don't do anything if dropped on same zone (unless it's battlefield with position change)
       if (sourceZone === targetZone && targetZone !== 'battlefield') {
         return;
@@ -342,7 +425,7 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
         position,
       });
     },
-    [sendAction]
+    [sendAction, opponent]
   );
 
   return (
@@ -356,6 +439,23 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
             <PlayerArea
               player={opponent}
               isOpponent={true}
+              onPeekOpponentLibrary={handlePeekOpponentLibrary}
+              onCardDoubleClick={handleCardDoubleTap}
+              onCardTap={handleCardTap}
+              onCardUntap={handleCardUntap}
+              onCardFlip={handleCardFlip}
+              onCardTransform={handleCardTransform}
+              onCardMoveTo={handleCardMoveTo}
+              onCardPutOnTop={handleCardPutOnTop}
+              onCardPutOnBottom={handleCardPutOnBottom}
+              onCardAddCounter={handleCardAddCounter}
+              onCardRemoveCounter={handleCardRemoveCounter}
+              onDestroyToken={handleDestroyToken}
+              onCardAttachTo={handleCardAttachTo}
+              onCardDetach={handleCardDetach}
+              onBringToFront={handleBringToFront}
+              onSendToBack={handleSendToBack}
+              allBattlefieldCards={allBattlefieldCards}
             />
           </div>
         ) : (
@@ -393,6 +493,9 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
             onDestroyToken={handleDestroyToken}
             onCardAttachTo={handleCardAttachTo}
             onCardDetach={handleCardDetach}
+            onBringToFront={handleBringToFront}
+            onSendToBack={handleSendToBack}
+            allBattlefieldCards={allBattlefieldCards}
           />
         </div>
       </div>

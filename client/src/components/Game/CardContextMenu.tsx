@@ -1,7 +1,9 @@
+import { useState, useRef, useEffect } from 'react';
 import * as ContextMenu from '@radix-ui/react-context-menu';
 import type { Card as CardType, Zone } from '@paper-magic/shared';
 import { isToken } from '@paper-magic/shared';
 import type { ReactNode } from 'react';
+import { Card } from './Card';
 
 interface CardContextMenuProps {
   card: CardType;
@@ -48,6 +50,19 @@ export function CardContextMenu({
   onRevealCard,
   otherBattlefieldCards = [],
 }: CardContextMenuProps) {
+  const [showCardPreview, setShowCardPreview] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<'top' | 'bottom'>('top');
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Update menu position when preview is shown
+  useEffect(() => {
+    if (showCardPreview && contentRef.current) {
+      const rect = contentRef.current.getBoundingClientRect();
+      // If menu is in bottom half of viewport, position preview at top
+      setMenuPosition(rect.top > window.innerHeight / 2 ? 'bottom' : 'top');
+    }
+  }, [showCardPreview]);
+
   if (disabled) {
     return <>{children}</>;
   }
@@ -67,12 +82,39 @@ export function CardContextMenu({
 
       <ContextMenu.Portal>
         <ContextMenu.Content
+          ref={contentRef}
           className="min-w-[180px] bg-surface-light rounded-lg p-1.5 shadow-xl border border-gray-700 z-[100]"
         >
-          {/* Card name header */}
-          <div className="px-2 py-1.5 text-sm font-medium text-gray-300 border-b border-gray-700 mb-1 truncate">
+          {/* Card name header - hover for zoom preview */}
+          <div
+            className="px-2 py-1.5 text-sm font-medium text-gray-300 border-b border-gray-700 mb-1 truncate cursor-help hover:text-blue-300"
+            onMouseEnter={() => setShowCardPreview(true)}
+            onMouseLeave={() => setShowCardPreview(false)}
+          >
             {card.name}
+            <span className="text-xs text-gray-500 ml-1">(hover to zoom)</span>
           </div>
+
+          {/* Card zoom preview - positioned based on menu location, shows both faces for DFCs */}
+          {showCardPreview && (
+            <div
+              className="fixed z-[200] pointer-events-none"
+              style={{
+                right: hasDFC ? '50px' : '220px',
+                ...(menuPosition === 'bottom'
+                  ? { bottom: '50px' }
+                  : { top: '50px' }
+                ),
+              }}
+            >
+              <div className="flex gap-2">
+                <Card card={card} size="xl" />
+                {hasDFC && (
+                  <Card card={{...card, isTransformed: !card.isTransformed}} size="xl" />
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Tap/Untap - only on battlefield */}
           {isBattlefield && (
@@ -312,7 +354,7 @@ export function CardContextMenu({
             <>
               <ContextMenu.Separator className="h-px bg-gray-700 my-1" />
 
-              {/* Attach to another card */}
+              {/* Attach to another card (same player) */}
               {otherBattlefieldCards.length > 0 && (
                 <ContextMenu.Sub>
                   <ContextMenu.SubTrigger className="flex items-center justify-between px-2 py-1.5 text-sm text-gray-200 rounded hover:bg-surface-lighter cursor-pointer outline-none">
@@ -341,28 +383,27 @@ export function CardContextMenu({
 
               {/* Detach if currently attached */}
               {card.attachedTo && (
-                <>
-                  <ContextMenu.Item
-                    className="flex items-center px-2 py-1.5 text-sm text-yellow-400 rounded hover:bg-surface-lighter cursor-pointer outline-none"
-                    onSelect={onDetach}
-                  >
-                    <span className="mr-2">⤢</span> Detach
-                  </ContextMenu.Item>
-                  {/* Layer control for attached cards */}
-                  <ContextMenu.Item
-                    className="flex items-center px-2 py-1.5 text-sm text-gray-300 rounded hover:bg-surface-lighter cursor-pointer outline-none"
-                    onSelect={onBringToFront}
-                  >
-                    <span className="mr-2">↑</span> Bring to Front
-                  </ContextMenu.Item>
-                  <ContextMenu.Item
-                    className="flex items-center px-2 py-1.5 text-sm text-gray-300 rounded hover:bg-surface-lighter cursor-pointer outline-none"
-                    onSelect={onSendToBack}
-                  >
-                    <span className="mr-2">↓</span> Send to Back
-                  </ContextMenu.Item>
-                </>
+                <ContextMenu.Item
+                  className="flex items-center px-2 py-1.5 text-sm text-yellow-400 rounded hover:bg-surface-lighter cursor-pointer outline-none"
+                  onSelect={onDetach}
+                >
+                  <span className="mr-2">⤢</span> Detach
+                </ContextMenu.Item>
               )}
+
+              {/* Layer control - available for all battlefield cards */}
+              <ContextMenu.Item
+                className="flex items-center px-2 py-1.5 text-sm text-gray-300 rounded hover:bg-surface-lighter cursor-pointer outline-none"
+                onSelect={onBringToFront}
+              >
+                <span className="mr-2">↑</span> Bring to Front
+              </ContextMenu.Item>
+              <ContextMenu.Item
+                className="flex items-center px-2 py-1.5 text-sm text-gray-300 rounded hover:bg-surface-lighter cursor-pointer outline-none"
+                onSelect={onSendToBack}
+              >
+                <span className="mr-2">↓</span> Send to Back
+              </ContextMenu.Item>
             </>
           )}
 
