@@ -84,8 +84,13 @@ VITE_WS_URL=ws://localhost:3001
 ## Testing Approach
 Manual testing during development. Game state is visual - verify by playing test games.
 
+## Production URLs
+- **Client:** https://paper-magic-client.vercel.app
+- **Server:** https://paper-magic-production.up.railway.app
+- **GitHub:** https://github.com/virtu333/paper-magic
+
 ## Current Phase
-Phase 2 UX Improvements - COMPLETE
+Phase 3 - Cross-Player Interactions (PLANNED)
 
 **Completed Features:**
 - Game lifecycle: lobby → mulligan → playing → sideboarding → finished
@@ -104,11 +109,26 @@ Phase 2 UX Improvements - COMPLETE
 - **Reveal functionality** - Reveal hand or top X cards to opponent
 - **Responsive dashboard** - Fixed layout issues when resizing
 - **Exile zone counters** - Support for Suspend (time counters)
+- **Production deployment** - Vercel (client) + Railway (server)
+- **About page** - How-to and feature description on lobby
 
-**Optional/Future:**
+**Next Up: Cross-Player Card Interactions**
+See detailed plan: `.claude/plans/iridescent-yawning-diffie.md`
+
+Goal: Enable cards to interact with opponent's battlefield for common MTG scenarios:
+- **Pacifism-style**: Your aura attaches to opponent's creature
+- **O-Ring/Hearse-style**: Opponent's card "exiled under" your permanent
+
+Key changes needed:
+1. Add `attachedToOwner` field to Card interface
+2. New actions: `ATTACH_TO_OPPONENT`, `TAKE_AND_ATTACH`, `MOVE_TO_OPPONENT_ZONE`
+3. Enable dropping on opponent's battlefield
+4. Add context menus: "Attach to Opponent's..." and "Exile Under..."
+5. Update server to handle cross-player card lookups
+
+**Future/Optional:**
 - Smart alignment (snap cards to rows)
 - Attachment ordering (Bring to Front / Send to Back)
-- Production deployment (Vercel + Railway)
 
 ## Known Issues (To Fix)
 1. **Hand cards missing context menu** - Right-click on hand cards doesn't show CardContextMenu. Hand.tsx needs to wrap cards in CardContextMenu like Graveyard/ExileZone do.
