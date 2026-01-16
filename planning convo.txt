@@ -1,0 +1,729 @@
+I'd like to use claude code to develop a way to "play paper magic" online with a friend - this is particularly in the context of testing for new sets when new cards are to be released into a tournament environment and so you cannot test with arena of mtgo. Cockatrice is an alternative but kind of annoying to use. This would be meant to be used alongside a live call to communicate as we would not program in actual interactions the way arena/mtgo do.Let’s start by thinking about key features and the user journey
+This likely requires:
+1. Create and join games with a game ID and a password
+2. Input a decklist for 75 cards
+   1. Use scryfall API or something else to import card images
+3. Be able to create a magic the gathering environment
+   1. Deck area
+   2. Hand area
+   3. Stack area (where you first declare casting spells and before the resolve)
+   4. Play area (dynamic sizing in case board states get big)
+   5. Graveyard area - can click in to see what cards are in them
+   6. Exile exile zones - can click in to see what cards are in them; enable multiple zones (e.g., exile, adventure, warp, etc.)
+   7. Life tracking - mirror pen and paper life tracking where you document by hand
+4. Actions include
+   1. Shuffling deck
+   2. Drawing a card
+      1. also scrying, surveilling, exiling from top
+   3. Moving cards between areas
+   4. Tapping
+   5. “Targeting” i.e., I declare my interaction spell and can point to a card on my opponent’s side
+   6. Putting on counters
+      1. Enable generating different types of counters - perhaps a text box on the side that lets you type in different types of counters to track
+   7. Creating tokens
+      1. Enable generating different types of counters - perhaps a text box on the side that lets you type in different types of tokensShow less11:02 AMThis is a fantastic project idea! Testing new cards before they hit Arena/MTGO is a real pain point, and Cockatrice's UX leaves a lot to be desired. Let me think through this systematically.
+Core Concept
+A lightweight, real-time shared game state for paper Magic testing - essentially a "shared tabletop" that handles the visual/mechanical bookkeeping while you handle rules via voice chat.
+User Journey
+1. Game Setup Flow
+Host: Create Game → Get Game ID + set password → Share with friend
+Guest: Enter Game ID + password → Join lobby
+Both: Paste decklist (60 main + 15 sideboard) → Cards load from Scryfall → Ready up
+Game: Coin flip for who plays first → Opening hands drawn
+2. Pre-Game Decklist Import
+
+Paste standard decklist format (e.g., "4 Lightning Bolt", "2 Sheoldred, the Apocalypse")
+Fuzzy match against Scryfall API
+Show card preview grid for verification before confirming
+Handle double-faced cards, split cards, adventures properly
+
+3. Core Game Interface
+┌─────────────────────────────────────────────────────────────┐
+│  OPPONENT AREA                                              │
+│  ┌──────┐ ┌──────────────────────────┐ ┌────┐ ┌────┐ ┌────┐│
+│  │Deck  │ │ Battlefield              │ │GY  │ │Exile│ │Life││
+│  │(42)  │ │                          │ │(3) │ │(1)  │ │ 20 ││
+│  └──────┘ └──────────────────────────┘ └────┘ └────┘ └────┘│
+├─────────────────────────────────────────────────────────────┤
+│  THE STACK (shared, cards resolve top-down)                 │
+├─────────────────────────────────────────────────────────────┤
+│  YOUR AREA                                                  │
+│  ┌──────┐ ┌──────────────────────────┐ ┌────┐ ┌────┐ ┌────┐│
+│  │Deck  │ │ Battlefield              │ │GY  │ │Exile│ │Life││
+│  │(53)  │ │                          │ │(0) │ │(0)  │ │ 20 ││
+│  └──────┘ └──────────────────────────┘ └────┘ └────┘ └────┘│
+│  ┌──────────────────────────────────────────────────────────┐
+│  │ HAND: [card] [card] [card] [card] [card] [card] [card]  │
+│  └──────────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────┘
+Key Features Deep Dive
+Zones & Visibility
+ZoneYour ViewOpponent's ViewDeckCard count onlyCard count onlyHandFull cardsCard backs + countBattlefieldFullFullGraveyardExpandable listExpandable listExile (face-up)Expandable listExpandable listExile (face-down)Your cards visibleCard backsStackFullFull
+Actions & Interactions
+Card Movement:
+
+Drag-and-drop between zones
+Right-click context menu for common actions
+Keyboard shortcuts for speed (D = draw, T = tap selected)
+
+Deck Manipulation:
+
+Draw X cards
+Scry X (peek, then order/bottom)
+Surveil X (peek, then GY/top)
+Mill X
+Search library (opens scrollable view, pick card, auto-shuffle)
+Reveal top X
+
+Card State:
+
+Tap/untap (click or T key)
+Flip face-down/up
+Transform (DFCs)
+Counters: +1/+1, -1/-1, loyalty, custom named counters
+Attach (auras, equipment) - visual grouping
+
+Targeting:
+
+Click card → click target → draws temporary arrow
+Arrow persists until action resolves or cancelled
+
+Tokens:
+
+Token creator panel: name, P/T, types, abilities text
+Or search Scryfall for official token images
+Tokens get unique IDs for tracking
+
+Life Tracking (Paper-Style)
+┌─────────────────┐
+│ Starting: 20    │
+│ -3 (17)         │
+│ -2 (15)         │
+│ +4 (19)         │
+│ -7 (12)         │
+│ ────────────    │
+│ Current: 12     │
+└─────────────────┘
+
+Running ledger, not just a counter
+Click to add +/- entry with optional note
+History visible to both players
+Support other counters: poison, energy, experience
+
+Multiple Exile Zones
+This is smart - modern Magic has so many "exile but tracked" effects:
+
+Adventure (Bonecrusher Giant)
+Foretell
+Impulse draw (exile, may play this turn)
+Imprint effects
+"Until [creature] leaves" exile
+Companion zone (technically outside game)
+
+Implementation: Exile zones as labeled piles. Default "Exile" pile, plus ability to create named sub-zones. Cards in sub-zones show a label/color indicator.
+Technical Architecture Thoughts
+Real-Time Sync
+
+WebSocket connection between players
+Every action broadcasts state delta
+Optimistic UI updates with conflict resolution
+Reconnection handling (crucial for long games)
+
+State Model
+GameState {
+  players: [Player, Player]
+  stack: Card[]
+  turn: { player, phase }
+  history: Action[]  // for undo
+}
+
+Player {
+  deck: Card[]
+  hand: Card[]
+  battlefield: Card[]  // with position, tap state, counters, attachments
+  graveyard: Card[]
+  exileZones: { [zoneName]: Card[] }
+  life: LifeEntry[]
+  counters: { poison, energy, ... }
+}
+Scryfall Integration
+
+Cache card data locally after first fetch
+Handle rate limiting gracefully
+Store: name, image_uris, type_line, oracle_text, card_faces (for DFCs)
+
+Questions to Resolve
+
+Sideboarding between games? Probably need a "sideboard" phase where both players can swap cards, then ready up again.
+Mulligan handling? London mulligan: draw 7, decide keep/mull, if mull shuffle and repeat, then bottom X cards.
+Mobile support? This seems primarily desktop-focused, but worth considering responsive design.
+Persistence? Save/load game state for breaks? Or purely ephemeral sessions?
+Spectator mode? Could be useful for team testing.
+Undo/redo? How far back? Per-action or checkpoint-based?
+
+
+What aspects would you like to drill into further before we start building? I'm thinking the MVP might be:
+
+Game creation/joining
+Decklist import with Scryfall
+Basic zones (deck, hand, battlefield, GY, exile)
+Core actions (draw, tap, move cards)
+Life tracking
+
+Then iterate to add: stack visualization, targeting arrows, counters/tokens, multiple exile zones, etc.great start. couple notes: let people declare concede / when game is over in-game; allow movement to sideboard phase and gamesLondon mulligan worksDesktop focus for nowsave/load seems like a good idea (like leaving a table while playing in paper)no need for spectator mode - can rely on screen sharing while on a call (eg while on discord)undo/redo per-action seems to make sensei think we need counters/tokens as part of the MVP but stack visualization, targeting arrows are out of scope. maybe we start with 2 exile zones  - i believe arena basically just has 2 - one exile zone for "active" cards like adventure; one for the rest that tend to be uninteractable (e.g., exiled by swords to plowshare))Show more11:08 AMPerfect, those clarifications really tighten the scope. Let me revise the MVP definition and then we can sketch out the technical approach for Claude Code.
+Revised MVP Scope
+In Scope
+
+Game lifecycle: Create/join with ID+password, concede, game end declaration, sideboard phase, multiple games in a match
+Decklist import: 75-card list, Scryfall resolution, verification UI
+Zones: Deck, hand, battlefield, graveyard, 2 exile zones (Active/Permanent)
+Core actions: Draw, tap/untap, move between zones, shuffle, mulligan (London)
+Life tracking: Paper-style ledger with history
+Counters: +1/+1, -1/-1, loyalty, custom named
+Tokens: Creator with name/P/T/types, persist in battlefield
+Persistence: Save/load game state
+Undo/redo: Per-action history
+
+Out of Scope (v2+)
+
+Stack visualization
+Targeting arrows
+Spectator mode
+Mobile optimization
+Additional exile zone types beyond 2
+
+Technical Architecture
+Stack Choice
+I'm thinking React + TypeScript frontend with WebSocket for real-time sync. For the backend, we have options:
+Option A: Lightweight Node.js server
+
+Express + ws library
+Simple room management
+Game state lives in memory, persisted to JSON files
+Easy to run locally or deploy cheaply
+
+Option B: Firebase/Supabase
+
+Realtime database handles sync automatically
+Auth built-in
+More infrastructure abstraction
+Potential latency concerns for rapid actions
+
+Option C: Peer-to-peer (WebRTC)
+
+No server needed for gameplay
+One player hosts state
+Trickier reconnection handling
+Save/load would need external storage
+
+I'd lean toward Option A for this use case - it gives us full control over the game state model, keeps things simple, and a Node server is trivial to run. We can always migrate to something more robust later.
+Project Structure
+paper-magic/
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Game/
+│   │   │   │   ├── Battlefield.tsx
+│   │   │   │   ├── Hand.tsx
+│   │   │   │   ├── Deck.tsx
+│   │   │   │   ├── Graveyard.tsx
+│   │   │   │   ├── ExileZone.tsx
+│   │   │   │   ├── LifeTracker.tsx
+│   │   │   │   └── Card.tsx
+│   │   │   ├── Lobby/
+│   │   │   │   ├── CreateGame.tsx
+│   │   │   │   ├── JoinGame.tsx
+│   │   │   │   └── DeckImport.tsx
+│   │   │   └── Shared/
+│   │   │       ├── TokenCreator.tsx
+│   │   │       └── CounterManager.tsx
+│   │   ├── hooks/
+│   │   │   ├── useGameState.ts
+│   │   │   ├── useWebSocket.ts
+│   │   │   └── useUndo.ts
+│   │   ├── services/
+│   │   │   └── scryfall.ts
+│   │   ├── types/
+│   │   │   └── game.ts
+│   │   └── utils/
+│   │       ├── deckParser.ts
+│   │       └── mulligan.ts
+│   └── package.json
+├── server/                 # Node.js backend
+│   ├── src/
+│   │   ├── index.ts
+│   │   ├── gameManager.ts
+│   │   ├── persistence.ts
+│   │   └── types.ts
+│   └── package.json
+└── shared/                 # Shared types/constants
+    └── protocol.ts         # WebSocket message types
+Core Data Types
+typescript// shared/protocol.ts
+
+interface Card {
+  instanceId: string;        // Unique per card instance in game
+  scryfallId: string;        // For image/data lookup
+  name: string;
+  imageUri: string;
+  backImageUri?: string;     // For DFCs or face-down
+  isTapped: boolean;
+  isFaceDown: boolean;
+  isTransformed: boolean;    // DFC backside showing
+  counters: Counter[];
+  attachedTo?: string;       // instanceId of card this is attached to
+  attachments: string[];     // instanceIds attached to this card
+  position?: { x: number; y: number };  // Battlefield position
+}
+
+interface Counter {
+  type: 'plusOne' | 'minusOne' | 'loyalty' | 'custom';
+  value: number;
+  label?: string;            // For custom counters
+}
+
+interface Token extends Card {
+  isToken: true;
+  power?: number;
+  toughness?: number;
+  types: string;             // "Creature — Zombie"
+  abilities?: string;
+}
+
+interface LifeEntry {
+  delta: number;
+  total: number;
+  note?: string;
+  timestamp: number;
+}
+
+interface Player {
+  id: string;
+  name: string;
+  deck: Card[];
+  hand: Card[];
+  battlefield: Card[];
+  graveyard: Card[];
+  exileActive: Card[];       // Adventures, impulse draw, etc.
+  exilePermanent: Card[];    // Gone forever
+  sideboard: Card[];
+  life: LifeEntry[];
+  counters: {
+    poison: number;
+    energy: number;
+    [key: string]: number;   // Custom player counters
+  };
+  mulliganCount: number;
+}
+
+interface GameState {
+  id: string;
+  password: string;          // Hashed
+  players: [Player | null, Player | null];
+  phase: 'lobby' | 'mulligan' | 'playing' | 'sideboarding' | 'finished';
+  currentGame: number;       // 1, 2, 3 in a match
+  gameResults: ('player1' | 'player2' | 'draw')[];
+  turn: {
+    activePlayer: 0 | 1;
+    phase: string;           // Just a label, no rules enforcement
+  };
+  createdAt: number;
+  lastAction: number;
+}
+
+// Actions sent over WebSocket
+type GameAction =
+  | { type: 'DRAW_CARDS'; count: number }
+  | { type: 'MOVE_CARD'; cardId: string; from: Zone; to: Zone; index?: number }
+  | { type: 'TAP_CARD'; cardId: string }
+  | { type: 'UNTAP_CARD'; cardId: string }
+  | { type: 'UNTAP_ALL' }
+  | { type: 'FLIP_CARD'; cardId: string }
+  | { type: 'TRANSFORM_CARD'; cardId: string }
+  | { type: 'ADD_COUNTER'; cardId: string; counter: Counter }
+  | { type: 'REMOVE_COUNTER'; cardId: string; counterIndex: number }
+  | { type: 'UPDATE_LIFE'; delta: number; note?: string }
+  | { type: 'CREATE_TOKEN'; token: Omit<Token, 'instanceId'> }
+  | { type: 'SHUFFLE_DECK' }
+  | { type: 'MULLIGAN_KEEP' }
+  | { type: 'MULLIGAN_AGAIN' }
+  | { type: 'BOTTOM_CARDS'; cardIds: string[] }  // After keeping mulligan
+  | { type: 'CONCEDE' }
+  | { type: 'DECLARE_WINNER'; winner: 0 | 1 | 'draw' }
+  | { type: 'MOVE_TO_SIDEBOARD' }
+  | { type: 'READY_FOR_NEXT_GAME' }
+  | { type: 'SEARCH_LIBRARY'; onComplete: 'hand' | 'battlefield' | 'graveyard' }
+  | { type: 'SCRY'; count: number }
+  | { type: 'REVEAL_TOP'; count: number }
+  | { type: 'UNDO' }
+  | { type: 'REDO' }
+  | { type: 'MOVE_CARD_POSITION'; cardId: string; position: { x: number; y: number } };
+
+type Zone = 'deck' | 'hand' | 'battlefield' | 'graveyard' | 'exileActive' | 'exilePermanent' | 'sideboard';
+WebSocket Message Protocol
+typescript// Client -> Server
+interface ClientMessage {
+  type: 'CREATE_GAME' | 'JOIN_GAME' | 'SUBMIT_DECK' | 'ACTION' | 'SAVE_GAME' | 'LOAD_GAME';
+  payload: any;
+  requestId: string;  // For ack tracking
+}
+
+// Server -> Client  
+interface ServerMessage {
+  type: 'GAME_CREATED' | 'GAME_JOINED' | 'STATE_UPDATE' | 'ERROR' | 'PLAYER_CONNECTED' | 'PLAYER_DISCONNECTED' | 'ACK';
+  payload: any;
+  requestId?: string;
+}
+Scryfall Integration
+typescript// client/src/services/scryfall.ts
+
+interface ScryfallCard {
+  id: string;
+  name: string;
+  image_uris?: { normal: string; small: string };
+  card_faces?: Array<{ 
+    name: string; 
+    image_uris: { normal: string; small: string } 
+  }>;
+  layout: string;  // 'normal', 'transform', 'adventure', 'split', etc.
+}
+
+// Rate limit: 10 requests/second, we'll batch lookups
+async function resolveDecklist(decklist: string): Promise<ResolvedCard[]> {
+  const lines = parseDecklist(decklist);  // "4 Lightning Bolt" -> { count: 4, name: "Lightning Bolt" }
+  
+  // Use Scryfall's collection endpoint for batch lookup
+  // POST https://api.scryfall.com/cards/collection
+  // Body: { identifiers: [{ name: "Lightning Bolt" }, ...] }
+  // Max 75 cards per request - perfect for a deck
+}
+
+// Cache results in localStorage to avoid repeated API calls
+const cardCache = new Map<string, ScryfallCard>();
+Implementation Plan for Claude Code
+I'd suggest we build this in phases, each resulting in something testable:
+Phase 1: Project Setup & Scryfall Integration
+
+Initialize monorepo with client/server/shared
+Build decklist parser
+Implement Scryfall batch lookup with caching
+Simple UI to paste decklist and see resolved cards
+
+Phase 2: Game Lobby & WebSocket Foundation
+
+Server with room management (create/join with ID+password)
+WebSocket connection handling
+Lobby UI: create game, join game, submit deck
+Basic state sync proof-of-concept
+
+Phase 3: Core Game Board
+
+Render zones: deck (count), hand (your cards), battlefield, graveyard, 2 exile zones
+Card component with image display
+Drag-and-drop between zones
+Opponent's view (card backs for hand)
+
+Phase 4: Card Actions
+
+Tap/untap
+Draw cards
+Shuffle
+Face-down/up
+Transform (DFCs)
+
+Phase 5: Mulligan Flow
+
+London mulligan implementation
+Bottom X cards UI after keeping
+Coin flip for play/draw
+
+Phase 6: Life & Counters
+
+Life tracker with paper-style ledger
+Counter system on cards (+1/+1, -1/-1, loyalty, custom)
+Poison/energy counters on players
+
+Phase 7: Tokens
+
+Token creator modal
+Token search via Scryfall
+Tokens on battlefield
+
+Phase 8: Game Lifecycle
+
+Concede button
+Declare winner
+Sideboarding phase
+Multiple games tracking (best of 3)
+
+Phase 9: Persistence & Polish
+
+Save/load game state
+Undo/redo system
+Reconnection handling
+UI polish
+
+
+Does this architecture and phasing make sense? Any adjustments before we start scaffolding with Claude Code?
+A few specific questions:
+
+Deployment target: Running locally for now, or do you want to deploy somewhere (Vercel + Railway, or similar)?
+UI framework preference: Plain React + CSS, or use something like Tailwind? Maybe a component library like Radix for modals/dropdowns?
+Drag-and-drop library: react-dnd is the standard, or we could use something lighter like @dnd-kit.
+here is some feedback from gemini pro evaluating this:Architectural Strength & Suggestions
+Your Option A (Node.js + ws) is the correct choice. Since the "brain" of the game is the players and not an automated engine, you just need a fast, authoritative "state relay."
+State Management: I recommend using Redux Toolkit or Zustand on the frontend. With WebSockets, you’ll want a clean way to apply "patches" or full state overrides when the server broadcasts an update.
+The "Stack" Zone: Even if you aren't programming interactions, a visual "Stack" zone is highly recommended. It acts as a physical landing spot for cards cast from hand before they are moved to the battlefield or graveyard, helping players track response windows during a call.UI & Interaction ModelBattlefield Layout: Use a grid-based or "flex-wrap" system for the battlefield, but consider absolute positioning for the "Targeting/Attachments" logic. If a player attaches an Aura or Equipment to a creature, being able to snap the card slightly offset behind the creature is a huge UX win.Deployment Target
+Recommendation: Railway (Server) + Vercel/Netlify (Frontend).
+Why: Since you’re using WebSockets, standard serverless functions (like basic Vercel/AWS Lambda) won't work well for the backend because they don't maintain a persistent connection. Railway is "set and forget" for Node.js apps and handles the ws protocol perfectly.
+UI Framework
+Recommendation: Tailwind CSS + Headless UI / Radix.
+Why: You need custom layouts for the card zones. Tailwind allows you to build a "dark mode" aesthetic (preferred by MTG players) very quickly. Radix is excellent for the "Token Creator" or "Card Search" modals, ensuring they are accessible and don't break the game's focus.
+Drag-and-Drop Library
+Recommendation: @dnd-kit.
+Why: react-dnd is powerful but can be boilerplate-heavy. @dnd-kit is more modern, lighter, and handles "sorting" (for the hand) and "moving" (to the battlefield) much more intuitively. It also has better support for the "card snapping" you might want for attachments.Refining the "Claude Code" Strategy
+To get the most out of Claude Code, I suggest a slight tweak to your Phase 1:
+Start with the Data Contract: Have Claude generate the shared/types.ts first. If the frontend and backend don't agree on what a Card object looks like, you'll hit bugs in Phase 3.
+Scryfall "Proxy": Don't just call Scryfall from the frontend. Build a small service in your Node backend to proxy these requests. This prevents hitting rate limits if both you and your friend refresh the page simultaneously, and allows you to cache card data on the server side.Recommended Technical Addition: "The Command Palette"
+In a paper-magic simulator, clicking through menus for frequent actions (Tap, Scry, Add Counter) is tedious.
+Suggestion: Ask Claude to implement a Keyboard Shortcut system (e.g., T to tap, D to draw, + to add counter). This makes the "Paper Magic" feel much more fluid and fast.Show more11:15 AMExcellent feedback from Gemini - these are all solid refinements. Let me integrate them into the plan.
+Updated Architecture Decisions
+State Management: Zustand
+Agreed over Redux Toolkit for this use case - lighter weight, less boilerplate, and the "subscribe to slices" pattern works perfectly for a game where we're applying server-pushed state updates:
+typescript// Simplified example of what this enables
+const useGameStore = create<GameStore>((set, get) => ({
+  gameState: null,
+  
+  // Server pushes full state or patches
+  applyServerUpdate: (update: Partial<GameState>) => 
+    set((state) => ({ gameState: { ...state.gameState, ...update } })),
+  
+  // Optimistic local actions
+  tapCard: (cardId: string) => {
+    // Update locally immediately
+    set((state) => /* update card.isTapped */);
+    // Send to server
+    get().sendAction({ type: 'TAP_CARD', cardId });
+  }
+}));
+```
+
+### Stack Zone: Adding Back to MVP
+You're right - even without rules enforcement, having a visual "stack" landing zone is important for communication during a call. "I'm putting Counterspell on the stack targeting your creature spell" is much clearer when there's an actual place to put it.
+
+Updated zone list:
+- Deck, Hand, **Stack (shared/visible)**, Battlefield, Graveyard, Exile (Active), Exile (Permanent), Sideboard
+
+### Deployment: Railway + Vercel
+Makes sense. Railway handles persistent WebSocket connections properly, Vercel for the static frontend. Both have generous free tiers for testing.
+
+### UI: Tailwind + Radix
+Agreed. Tailwind's utility classes are perfect for the custom zone layouts we need, and dark mode is basically table stakes for MTG tooling. Radix gives us accessible modals/dropdowns without fighting a component library's opinions.
+
+### DnD: @dnd-kit
+Lighter, more modern, better TypeScript support. The sortable preset for hand ordering and droppable zones for battlefield/stack/etc. will cover our needs.
+
+### Scryfall Proxy
+Smart call - centralizing API calls through the backend means:
+- Single cache (not per-client)
+- Rate limit protection
+- Can pre-warm cache with popular cards
+- Clients don't need to handle Scryfall errors
+
+### Command Palette / Keyboard Shortcuts
+Love this. Paper magic is fast - clicking through menus kills the flow. We'll build this as a core feature, not an afterthought.
+
+## Revised Technical Spec
+
+### Updated Project Structure
+```
+paper-magic/
+├── client/                 
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Game/
+│   │   │   │   ├── GameBoard.tsx        # Main layout
+│   │   │   │   ├── PlayerArea.tsx       # One player's zones
+│   │   │   │   ├── Battlefield.tsx      # Absolute positioning for attachments
+│   │   │   │   ├── Hand.tsx             # Sortable cards
+│   │   │   │   ├── Stack.tsx            # Shared stack zone
+│   │   │   │   ├── Deck.tsx
+│   │   │   │   ├── Graveyard.tsx
+│   │   │   │   ├── ExileZone.tsx
+│   │   │   │   ├── LifeTracker.tsx
+│   │   │   │   └── Card.tsx
+│   │   │   ├── Lobby/
+│   │   │   ├── Shared/
+│   │   │   │   ├── CommandPalette.tsx   # Keyboard shortcut UI
+│   │   │   │   ├── TokenCreator.tsx
+│   │   │   │   └── CounterManager.tsx
+│   │   │   └── ui/                      # Radix primitives
+│   │   ├── stores/
+│   │   │   ├── gameStore.ts             # Zustand store
+│   │   │   └── uiStore.ts               # Local UI state
+│   │   ├── hooks/
+│   │   │   ├── useWebSocket.ts
+│   │   │   ├── useKeyboardShortcuts.ts
+│   │   │   └── useUndo.ts
+│   │   ├── services/
+│   │   │   └── api.ts                   # Calls to our backend (not Scryfall direct)
+│   │   └── types/                       # Imports from shared/
+├── server/                 
+│   ├── src/
+│   │   ├── index.ts
+│   │   ├── gameManager.ts
+│   │   ├── scryfallProxy.ts             # Cached Scryfall lookups
+│   │   ├── persistence.ts
+│   │   └── types.ts
+├── shared/                              # THE DATA CONTRACT - built first
+│   ├── types/
+│   │   ├── card.ts
+│   │   ├── game.ts
+│   │   ├── player.ts
+│   │   └── actions.ts
+│   └── constants.ts
+Keyboard Shortcuts (Initial Set)
+KeyActionContextDDraw 1 cardAlwaysShift+DDraw X cards (prompt)AlwaysTTap selected card(s)Card selectedUUntap selected card(s)Card selectedShift+UUntap all your permanentsAlwaysSShuffle deckAlwaysMMove selected to... (submenu)Card selected+ / =Add +1/+1 counterCard selected-Add -1/-1 counterCard selectedCCounter menu (custom)Card selectedFFlip face down/upCard selectedRTransform (DFC)Card selectedCtrl+ZUndoAlwaysCtrl+Shift+ZRedoAlways/ or Ctrl+KOpen command paletteAlwaysEscDeselect / close modalAlways
+Command palette (/) opens a searchable list of all actions - useful for less frequent things like "Scry 3" or "Create token".
+Battlefield Positioning
+For attachments, we'll use absolute positioning with snapping:
+typescriptinterface BattlefieldCard extends Card {
+  position: { x: number; y: number };
+  attachedTo?: string;  // If set, position is relative to parent
+}
+
+// When rendering:
+// - Base cards render at their absolute position
+// - Attached cards render offset from their parent (e.g., y + 20px, slightly behind)
+// - Dragging an attached card detaches it
+// - Dropping a card onto another card attaches it (with confirmation for auras/equipment)
+```
+
+Visual example:
+```
+┌─────────────┐
+│ Creature    │  <- Base card at position (100, 50)
+│             │
+└─────────────┘
+   ┌─────────────┐
+   │ Aura        │  <- Attached, rendered at (100, 70), tucked behind
+   │             │
+   └─────────────┘
+Revised Implementation Phases
+Phase 0: Data Contract (shared/)
+Goal: Single source of truth for all types before any implementation.
+
+shared/types/card.ts - Card, Token, Counter interfaces
+shared/types/player.ts - Player state
+shared/types/game.ts - GameState, zones, phases
+shared/types/actions.ts - All GameAction union types
+shared/types/protocol.ts - WebSocket message types
+shared/constants.ts - Zone names, default values
+
+Phase 1: Project Scaffolding
+
+Monorepo setup (npm workspaces or turborepo)
+Client: Vite + React + TypeScript + Tailwind + Radix
+Server: Node + TypeScript + ws + express (for REST endpoints)
+Shared package linked to both
+Basic dev scripts (npm run dev starts both)
+
+Phase 2: Scryfall Proxy & Deck Import
+
+Server: /api/cards/resolve endpoint - accepts card names, returns Scryfall data
+Server: In-memory cache + optional file persistence for card data
+Client: Deck import UI - paste text, see resolved cards with images
+Handle edge cases: DFCs, split cards, adventures, typos/fuzzy matching
+
+Phase 3: Game Lobby & WebSocket
+
+Server: Room management (create with password, join with ID+password)
+Server: WebSocket connection per player, tied to room
+Client: Create game flow → get shareable game ID
+Client: Join game flow → enter ID + password
+Client: Lobby state - see both players, submit decks, ready up
+
+Phase 4: Core Game Board Layout
+
+Zustand store setup with server sync
+Main game board layout (your area, opponent area, shared stack)
+Zone components (deck count, hand, battlefield, graveyard, 2 exile zones)
+Card component with image, tap state, counter display
+Opponent's hand shows card backs
+
+Phase 5: Drag-and-Drop & Card Movement
+
+@dnd-kit setup
+Drag cards between zones
+Hand sorting (reorder cards in hand)
+Battlefield absolute positioning
+Attachment snapping (drop card on card to attach)
+
+Phase 6: Card Actions & Keyboard Shortcuts
+
+Tap/untap
+Face down/up
+Transform (DFC)
+Draw cards
+Shuffle
+useKeyboardShortcuts hook
+Command palette component
+
+Phase 7: Mulligan Flow
+
+Pre-game coin flip
+London mulligan: draw 7, keep or mull
+After keep: select X cards to bottom (based on mulligan count)
+Both players ready → game starts
+
+Phase 8: Life, Counters, Tokens
+
+Life tracker with ledger history
+Poison/energy counters on player
++1/+1, -1/-1, loyalty, custom counters on cards
+Token creator modal
+Scryfall token search
+
+Phase 9: Stack Zone
+
+Shared stack area between battlefields
+Cards on stack show who owns them
+Move to stack action (from hand or battlefield for abilities)
+Resolve (move from stack to battlefield/graveyard)
+
+Phase 10: Game Lifecycle
+
+Concede button
+Declare winner modal
+Move to sideboarding phase
+Sideboard swap UI
+Ready for next game
+Match score tracking (best of 3)
+
+Phase 11: Persistence & Undo
+
+Save game state to server (generates save code)
+Load game from save code
+Undo/redo action history
+Reconnection handling (rejoin room, get current state)
+
+Phase 12: Polish & Deploy
+
+Error handling and edge cases
+Loading states
+Responsive tweaks (min-width requirements)
+Deploy to Railway + Vercel
+README and usage docs
+
+
+Ready for Claude Code
+I think we're ready to start building. The plan is solid and the phases are scoped to be independently testable.
+Proposed first session: Phase 0 + Phase 1
+
+Set up the monorepo structure
+Define all shared types (the data contract)
+Scaffold client with Vite + React + Tailwind + Radix
+Scaffold server with Express + ws
+Get a "hello world" WebSocket connection working
+
+Want me to start a Claude Code session and begin scaffolding, or any final adjustments to the plan first?
