@@ -1,4 +1,4 @@
-import type { Card } from './card';
+import type { Card } from './card.js';
 
 export interface LifeEntry {
   delta: number;      // Change amount (+3, -2, etc.)

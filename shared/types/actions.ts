@@ -1,5 +1,5 @@
-import type { Zone, GameResult } from './game';
-import type { Counter, CardPosition, Token } from './card';
+import type { Zone, GameResult } from './game.js';
+import type { Counter, CardPosition, Token } from './card.js';
 
 // All possible game actions
 export type GameAction =

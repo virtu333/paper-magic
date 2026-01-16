@@ -1,5 +1,5 @@
-import type { Player } from './player';
-import type { Card } from './card';
+import type { Player } from './player.js';
+import type { Card } from './card.js';
 
 export type GamePhase =
   | 'lobby'        // Waiting for players, submitting decks

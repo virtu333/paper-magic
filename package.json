@@ -11,7 +11,7 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "npm run dev -w client",
     "dev:server": "npm run dev -w server",
-    "build": "npm run typecheck -w shared && npm run build -w client && npm run build -w server",
+    "build": "npm run build -w shared && npm run build -w client && npm run build -w server",
     "typecheck": "npm run typecheck -w shared && npm run typecheck -w client && npm run typecheck -w server"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
-import type { GameState } from './game';
-import type { GameAction } from './actions';
+import type { GameState } from './game.js';
+import type { GameAction } from './actions.js';
 
 // Client -> Server message types
 export type ClientMessageType =

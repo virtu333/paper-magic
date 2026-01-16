@@ -5,24 +5,24 @@ export type {
   CardPosition,
   Card,
   Token,
-} from './card';
+} from './card.js';
 
 export {
   isToken,
   createCard,
-} from './card';
+} from './card.js';
 
 // Player types
 export type {
   LifeEntry,
   PlayerCounters,
   Player,
-} from './player';
+} from './player.js';
 
 export {
   getCurrentLife,
   createPlayer,
-} from './player';
+} from './player.js';
 
 // Game types
 export type {
@@ -32,20 +32,20 @@ export type {
   TurnState,
   ActionLogEntry,
   GameState,
-} from './game';
+} from './game.js';
 
 export {
   createGameState,
   getPlayer,
   isGameFull,
   bothPlayersReady,
-} from './game';
+} from './game.js';
 
 // Action types
 export type {
   GameAction,
   ActionPayload,
-} from './actions';
+} from './actions.js';
 
 // Protocol types
 export type {
@@ -64,6 +64,6 @@ export type {
   ErrorPayload,
   GameSavedPayload,
   CardsRevealedPayload,
-} from './protocol';
+} from './protocol.js';
 
-export { ErrorCodes } from './protocol';
+export { ErrorCodes } from './protocol.js';
