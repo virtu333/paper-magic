@@ -112,10 +112,10 @@ Phase 3 - Cross-Player Interactions (COMPLETE)
 - **Production deployment** - Vercel (client) + Railway (server)
 - **About page** - How-to and feature description on lobby
 - **Cross-player interactions** - Attach your cards to opponent's creatures (Pacifism), exile opponent's cards under your permanents (O-Ring)
+- **Attachment ordering** - Bring to Front / Send to Back for multiple attachments on same host
 
 **Future/Optional:**
 - Smart alignment (snap cards to rows)
-- Attachment ordering (Bring to Front / Send to Back)
 
 ## Known Issues (To Fix)
 1. **Hand cards missing context menu** - Right-click on hand cards doesn't show CardContextMenu. Hand.tsx needs to wrap cards in CardContextMenu like Graveyard/ExileZone do.
