@@ -7,7 +7,7 @@ const CARD_BACK_URL = '/card-back.svg';
 
 interface CardProps {
   card: CardType;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'md-responsive' | 'lg' | 'xl';
   showBack?: boolean;
   onClick?: () => void;
   onDoubleClick?: () => void;
@@ -20,6 +20,7 @@ interface CardProps {
 const sizeClasses = {
   sm: 'w-14',   // ~56px (was w-12, 20% larger)
   md: 'w-24',   // ~96px (was w-20, 20% larger)
+  'md-responsive': 'w-[var(--card-width-md)]',  // responsive: 80px on small screens, 96px on tall screens
   lg: 'w-36',   // ~144px (was w-32, ~12% larger)
   xl: 'w-64',   // 256px (unchanged, for hover preview)
 };
@@ -161,7 +162,7 @@ function TokenDisplay({
   showBack,
 }: {
   token: Token;
-  size: 'sm' | 'md' | 'lg' | 'xl';
+  size: 'sm' | 'md' | 'md-responsive' | 'lg' | 'xl';
   showBack?: boolean;
 }) {
   if (showBack || token.isFaceDown) {
@@ -171,8 +172,8 @@ function TokenDisplay({
   }
 
   const isCreature = token.types.toLowerCase().includes('creature');
-  const textSize = size === 'sm' ? 'text-[8px]' : size === 'md' ? 'text-[10px]' : size === 'lg' ? 'text-xs' : 'text-sm';
-  const nameSize = size === 'sm' ? 'text-[9px]' : size === 'md' ? 'text-xs' : size === 'lg' ? 'text-sm' : 'text-base';
+  const textSize = size === 'sm' ? 'text-[8px]' : (size === 'md' || size === 'md-responsive') ? 'text-[10px]' : size === 'lg' ? 'text-xs' : 'text-sm';
+  const nameSize = size === 'sm' ? 'text-[9px]' : (size === 'md' || size === 'md-responsive') ? 'text-xs' : size === 'lg' ? 'text-sm' : 'text-base';
 
   return (
     <div className="w-full h-full bg-gradient-to-br from-amber-200 to-amber-100 rounded-lg border border-amber-400 flex flex-col p-1 overflow-hidden">
@@ -212,7 +213,7 @@ export function CardPlaceholder({
   onClick,
   className = '',
 }: {
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'md-responsive' | 'lg' | 'xl';
   label?: string;
   onClick?: () => void;
   className?: string;
@@ -242,7 +243,7 @@ export function CardStack({
   onClick,
 }: {
   cards: CardType[];
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'md-responsive' | 'lg' | 'xl';
   maxShow?: number;
   onClick?: () => void;
 }) {

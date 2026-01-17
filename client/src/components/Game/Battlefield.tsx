@@ -89,7 +89,7 @@ export function Battlefield({
     <div
       ref={setRefs}
       className={`
-        relative w-full h-80
+        relative w-full h-full
         bg-surface-lighter/30 rounded-lg border border-gray-800
         cursor-crosshair
         ${isOver ? 'ring-2 ring-accent bg-accent/10' : ''}
@@ -135,7 +135,7 @@ export function Battlefield({
                 <InteractiveCard
                   card={attachment}
                   zone="battlefield"
-                  size="md"
+                  size="md-responsive"
                   enableDrag={enableDrag}
                   enableContextMenu={true}
                   onClick={() => onCardClick?.(attachment)}
@@ -163,7 +163,7 @@ export function Battlefield({
             <InteractiveCard
               card={card}
               zone="battlefield"
-              size="md"
+              size="md-responsive"
               selected={card.instanceId === selectedCardId}
               enableDrag={enableDrag}
               enableContextMenu={true}

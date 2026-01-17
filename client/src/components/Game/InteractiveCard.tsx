@@ -6,7 +6,7 @@ import { CardContextMenu } from './CardContextMenu';
 interface InteractiveCardProps {
   card: CardType;
   zone: Zone;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'md-responsive' | 'lg';
   showBack?: boolean;
   selected?: boolean;
   enableDrag?: boolean;

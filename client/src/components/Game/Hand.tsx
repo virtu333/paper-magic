@@ -26,7 +26,7 @@ export function Hand({
 }: HandProps) {
   if (cards.length === 0) {
     return (
-      <div className="h-36 flex items-center justify-center text-gray-600 text-sm">
+      <div className="h-[var(--hand-height)] flex items-center justify-center text-gray-600 text-sm">
         {isOpponent ? 'Opponent has no cards in hand' : 'Your hand is empty'}
       </div>
     );
@@ -43,7 +43,7 @@ export function Hand({
   const overlap = getOverlap();
 
   return (
-    <div className="relative h-36 flex items-center justify-center">
+    <div className="relative h-[var(--hand-height)] flex items-center justify-center">
       <div
         className="flex items-center"
         style={{
@@ -71,7 +71,7 @@ export function Hand({
                     <DraggableCard
                       card={card}
                       sourceZone="hand"
-                      size="md"
+                      size="md-responsive"
                       showBack={false}
                       selected={card.instanceId === selectedCardId}
                       onClick={() => onCardClick?.(card, index)}
@@ -80,7 +80,7 @@ export function Hand({
                   ) : (
                     <Card
                       card={card}
-                      size="md"
+                      size="md-responsive"
                       showBack={false}
                       selected={card.instanceId === selectedCardId}
                       onClick={() => onCardClick?.(card, index)}
@@ -92,7 +92,7 @@ export function Hand({
             ) : (
               <Card
                 card={card}
-                size="md"
+                size="md-responsive"
                 showBack={true}
                 selected={card.instanceId === selectedCardId}
                 onClick={() => onCardClick?.(card, index)}

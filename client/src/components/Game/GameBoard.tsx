@@ -435,7 +435,7 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
       <div className="flex-1 flex flex-col p-4 pb-14 overflow-hidden">
         {/* Opponent area (top) */}
         {opponent ? (
-          <div className="flex-1 min-h-0">
+          <div className="flex-[0.8] min-h-0">
             <PlayerArea
               player={opponent}
               isOpponent={true}
@@ -465,7 +465,7 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
         )}
 
         {/* Your area (bottom) */}
-        <div className="flex-1 min-h-0">
+        <div className="flex-[1.2] min-h-0">
           <PlayerArea
             player={myPlayer}
             isOpponent={false}

@@ -7,7 +7,7 @@ import { useMemo } from 'react';
 interface DraggableCardProps {
   card: CardType;
   sourceZone: Zone;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'md-responsive' | 'lg';
   showBack?: boolean;
   selected?: boolean;
   disabled?: boolean;

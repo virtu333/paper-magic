@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Responsive card sizing based on viewport height */
+:root {
+  /* Default for small screens (< 1000px height) - 30% smaller */
+  --card-width-md: 67px;    /* 96px * 0.70 */
+  --hand-height: 101px;     /* 144px * 0.70 */
+}
+
+@media (min-height: 1000px) {
+  :root {
+    /* Full size for tall screens */
+    --card-width-md: 96px;  /* w-24 equivalent */
+    --hand-height: 144px;   /* h-36 equivalent */
+  }
+}
+
 /* Base styles */
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

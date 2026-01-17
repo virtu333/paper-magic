@@ -174,46 +174,46 @@ export function PlayerArea({
 
   // Player's own area - dashboard below hand
   return (
-    <div className="relative flex flex-col gap-2 h-full">
-      {/* Battlefield row - can shrink to fit */}
-      <div className="flex gap-2 flex-1 min-h-0 overflow-hidden">
-        {/* Side zones */}
-        <div className="flex flex-col gap-2 w-36 flex-shrink-0">
-          <Deck
-            cards={player.deck}
+    <div className="relative flex gap-2 h-full">
+      {/* Side zones - full height column */}
+      <div className="flex flex-col gap-2 w-36 flex-shrink-0">
+        <Deck
+          cards={player.deck}
+          isOpponent={isOpponent}
+          onDraw={onDraw}
+          onSearch={onSearch}
+          onShuffle={onShuffle}
+          onScry={onScry}
+          onRevealTop={onRevealTop}
+          onRevealTopToOpponent={onRevealTopToOpponent}
+        />
+        <div className="flex gap-1">
+          <Graveyard
+            cards={player.graveyard}
             isOpponent={isOpponent}
-            onDraw={onDraw}
-            onSearch={onSearch}
-            onShuffle={onShuffle}
-            onScry={onScry}
-            onRevealTop={onRevealTop}
-            onRevealTopToOpponent={onRevealTopToOpponent}
+            onCardClick={onCardClick}
+            onCardMoveTo={onCardMoveTo}
+            onCardPutOnTop={onCardPutOnTop}
+            onCardPutOnBottom={onCardPutOnBottom}
           />
-          <div className="flex gap-1">
-            <Graveyard
-              cards={player.graveyard}
-              isOpponent={isOpponent}
-              onCardClick={onCardClick}
-              onCardMoveTo={onCardMoveTo}
-              onCardPutOnTop={onCardPutOnTop}
-              onCardPutOnBottom={onCardPutOnBottom}
-            />
-            <ExileZone
-              activeCards={player.exileActive}
-              permanentCards={player.exilePermanent}
-              isOpponent={isOpponent}
-              onCardClick={onCardClick}
-              onCardMoveTo={onCardMoveTo}
-              onCardPutOnTop={onCardPutOnTop}
-              onCardPutOnBottom={onCardPutOnBottom}
-              onCardAddCounter={onCardAddCounter}
-              onCardRemoveCounter={onCardRemoveCounter}
-            />
-          </div>
+          <ExileZone
+            activeCards={player.exileActive}
+            permanentCards={player.exilePermanent}
+            isOpponent={isOpponent}
+            onCardClick={onCardClick}
+            onCardMoveTo={onCardMoveTo}
+            onCardPutOnTop={onCardPutOnTop}
+            onCardPutOnBottom={onCardPutOnBottom}
+            onCardAddCounter={onCardAddCounter}
+            onCardRemoveCounter={onCardRemoveCounter}
+          />
         </div>
+      </div>
 
-        {/* Main battlefield - expanded height */}
-        <div className="flex-1">
+      {/* Right side: battlefield + hand + dashboard */}
+      <div className="flex flex-col gap-2 flex-1 min-h-0">
+        {/* Main battlefield - grows to fill */}
+        <div className="flex-1 min-h-0 overflow-hidden">
           <Battlefield
             cards={player.battlefield}
             isOpponent={isOpponent}
@@ -237,51 +237,51 @@ export function PlayerArea({
             allBattlefieldCards={allBattlefieldCards}
           />
         </div>
-      </div>
 
-      {/* Hand row */}
-      <div className="bg-surface/50 rounded-lg p-2 flex-shrink-0">
-        <Hand
-          cards={player.hand}
-          isOpponent={isOpponent}
-          onCardClick={onHandCardClick}
-          onCardDoubleClick={onHandCardDoubleClick}
-          onCardMoveTo={onCardMoveTo}
-          onRevealCard={onRevealCard}
-          selectedCardId={selectedCardId}
-        />
-      </div>
-
-      {/* Dashboard below hand */}
-      <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-blue-900/30 flex-shrink-0 min-h-[44px]">
-        <div className="flex items-center gap-4">
-          <span className="font-medium text-gray-200">{player.name}</span>
-          <span className="text-sm text-gray-400">
-            Hand: {player.hand.length} | Library: {player.deck.length}
-          </span>
-          {onRevealHand && (
-            <button
-              onClick={onRevealHand}
-              className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-500 rounded transition-colors"
-              title="Reveal your hand to opponent"
-            >
-              Reveal Hand
-            </button>
-          )}
+        {/* Hand row */}
+        <div className="bg-surface/50 rounded-lg p-2 flex-shrink-0">
+          <Hand
+            cards={player.hand}
+            isOpponent={isOpponent}
+            onCardClick={onHandCardClick}
+            onCardDoubleClick={onHandCardDoubleClick}
+            onCardMoveTo={onCardMoveTo}
+            onRevealCard={onRevealCard}
+            selectedCardId={selectedCardId}
+          />
         </div>
-        <div className="flex items-center gap-4">
-          {/* Life counter */}
-          <LifeCounter
-            life={player.life}
-            isOpponent={isOpponent}
-            onLifeChange={onLifeChange}
-          />
-          {/* Player counters (poison, energy, etc.) */}
-          <PlayerCounters
-            counters={player.counters}
-            isOpponent={isOpponent}
-            onCounterChange={onPlayerCounterChange}
-          />
+
+        {/* Dashboard below hand */}
+        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-blue-900/30 flex-shrink-0 min-h-[44px]">
+          <div className="flex items-center gap-4">
+            <span className="font-medium text-gray-200">{player.name}</span>
+            <span className="text-sm text-gray-400">
+              Hand: {player.hand.length} | Library: {player.deck.length}
+            </span>
+            {onRevealHand && (
+              <button
+                onClick={onRevealHand}
+                className="px-2 py-1 text-xs bg-yellow-600 hover:bg-yellow-500 rounded transition-colors"
+                title="Reveal your hand to opponent"
+              >
+                Reveal Hand
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            {/* Life counter */}
+            <LifeCounter
+              life={player.life}
+              isOpponent={isOpponent}
+              onLifeChange={onLifeChange}
+            />
+            {/* Player counters (poison, energy, etc.) */}
+            <PlayerCounters
+              counters={player.counters}
+              isOpponent={isOpponent}
+              onCounterChange={onPlayerCounterChange}
+            />
+          </div>
         </div>
       </div>
     </div>
