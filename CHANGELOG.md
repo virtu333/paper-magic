@@ -4,6 +4,40 @@ All notable changes to Paper Magic will be documented in this file.
 
 ## [Unreleased]
 
+## [2025-01-18] - Goldfish Mode (Solo Practice)
+
+### Added
+- **Goldfish Mode** - Single-player practice mode for testing decks without an opponent
+  - "Play Solo (Goldfish)" button appears in lobby while waiting for opponent
+  - Creates a dummy opponent with empty zones
+  - Turn always stays with player (no alternating)
+  - Mulligan transitions immediately after keeping (no waiting)
+  - Purple-themed UI indicators throughout (lobby, game board, turn indicator)
+  - Works with all existing features (draw, play, untap all, save/load, etc.)
+
+### Technical Details
+- Added `isGoldfishMode: boolean` to `GameState`
+- Added `ENABLE_GOLDFISH` action type
+- Server creates dummy opponent player with `hasKeptHand: true` and `readyForNextGame: true`
+- `PASS_TURN` keeps `activePlayer` at 0 in goldfish mode
+- `MULLIGAN_KEEP` transitions to playing phase immediately in goldfish mode
+- `READY_FOR_NEXT_GAME` skips opponent check in goldfish mode
+
+## [2025-01-17] - Start Game Bug Fix & WebSocket Reliability
+
+### Fixed
+- **"Start Game" button doing nothing** - Fixed silent failures when clicking Start Game
+  - Added error display to GameLobby (previously errors were set but never shown)
+  - Added `ws.readyState` checks before all WebSocket sends (Zustand state could show "connected" while socket was closing)
+  - Wrapped all `ws.send()` calls in try-catch to prevent uncaught exceptions
+  - Added server-side logging to track STATE_UPDATE delivery to each player
+
+### Technical Details
+- Files modified: `GameLobby.tsx`, `gameStore.ts`, `gameManager.ts`
+- All client WebSocket methods now check `ws.readyState === WebSocket.OPEN` before sending
+- Server logs when STATE_UPDATE is sent or skipped for each player
+- Error messages now visible in lobby UI with dismiss button
+
 ## [2025-01-16] - Cross-Player Interactions & Attachment Ordering
 
 ### Added

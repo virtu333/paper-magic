@@ -65,6 +65,7 @@ interface GameStore {
   sendAction: (action: GameAction) => void;
   sendActionWithResponse: (action: GameAction) => Promise<ServerMessage | null>;
   startGame: () => void;
+  enableGoldfishMode: () => void;
   leaveGame: () => void;
   clearError: () => void;
   dismissRevealedCards: () => void;
@@ -281,43 +282,53 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   createGame: (playerName: string, password: string) => {
     const { ws, connectionStatus } = get();
-    if (connectionStatus !== 'connected' || !ws) {
+    if (connectionStatus !== 'connected' || !ws || ws.readyState !== WebSocket.OPEN) {
       set({ error: 'Not connected to server' });
       return;
     }
 
     set({ gameStatus: 'creating', error: null });
 
-    const message: ClientMessage = {
-      type: 'CREATE_GAME',
-      payload: { playerName, password },
-      requestId: generateRequestId(),
-    };
+    try {
+      const message: ClientMessage = {
+        type: 'CREATE_GAME',
+        payload: { playerName, password },
+        requestId: generateRequestId(),
+      };
 
-    ws.send(JSON.stringify(message));
+      ws.send(JSON.stringify(message));
+    } catch (err) {
+      console.error('[GameStore] Failed to send CREATE_GAME:', err);
+      set({ error: 'Failed to create game - connection error', gameStatus: 'idle' });
+    }
   },
 
   joinGame: (gameId: string, playerName: string, password: string) => {
     const { ws, connectionStatus } = get();
-    if (connectionStatus !== 'connected' || !ws) {
+    if (connectionStatus !== 'connected' || !ws || ws.readyState !== WebSocket.OPEN) {
       set({ error: 'Not connected to server' });
       return;
     }
 
     set({ gameStatus: 'joining', error: null });
 
-    const message: ClientMessage = {
-      type: 'JOIN_GAME',
-      payload: { gameId, playerName, password },
-      requestId: generateRequestId(),
-    };
+    try {
+      const message: ClientMessage = {
+        type: 'JOIN_GAME',
+        payload: { gameId, playerName, password },
+        requestId: generateRequestId(),
+      };
 
-    ws.send(JSON.stringify(message));
+      ws.send(JSON.stringify(message));
+    } catch (err) {
+      console.error('[GameStore] Failed to send JOIN_GAME:', err);
+      set({ error: 'Failed to join game - connection error', gameStatus: 'idle' });
+    }
   },
 
   reconnect: () => {
     const { ws, connectionStatus, gameId, playerId } = get();
-    if (connectionStatus !== 'connected' || !ws) {
+    if (connectionStatus !== 'connected' || !ws || ws.readyState !== WebSocket.OPEN) {
       console.log('[GameStore] Cannot reconnect - not connected');
       return;
     }
@@ -329,18 +340,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     console.log(`[GameStore] Sending reconnect for game ${gameId}`);
 
-    const message: ClientMessage = {
-      type: 'RECONNECT',
-      payload: { gameId, playerId },
-      requestId: generateRequestId(),
-    };
+    try {
+      const message: ClientMessage = {
+        type: 'RECONNECT',
+        payload: { gameId, playerId },
+        requestId: generateRequestId(),
+      };
 
-    ws.send(JSON.stringify(message));
+      ws.send(JSON.stringify(message));
+    } catch (err) {
+      console.error('[GameStore] Failed to send RECONNECT:', err);
+    }
   },
 
   submitDeck: (deck) => {
     const { ws, connectionStatus } = get();
-    if (connectionStatus !== 'connected' || !ws) {
+    if (connectionStatus !== 'connected' || !ws || ws.readyState !== WebSocket.OPEN) {
       set({ error: 'Not connected to server' });
       return;
     }
@@ -364,34 +379,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }))
     );
 
-    const message: ClientMessage = {
-      type: 'SUBMIT_DECK',
-      payload: { mainDeck, sideboard },
-      requestId: generateRequestId(),
-    };
+    try {
+      const message: ClientMessage = {
+        type: 'SUBMIT_DECK',
+        payload: { mainDeck, sideboard },
+        requestId: generateRequestId(),
+      };
 
-    ws.send(JSON.stringify(message));
+      ws.send(JSON.stringify(message));
+    } catch (err) {
+      console.error('[GameStore] Failed to send SUBMIT_DECK:', err);
+      set({ error: 'Failed to submit deck - connection error' });
+    }
   },
 
   sendAction: (action: GameAction) => {
     const { ws, connectionStatus } = get();
-    if (connectionStatus !== 'connected' || !ws) {
+    if (connectionStatus !== 'connected' || !ws || ws.readyState !== WebSocket.OPEN) {
       set({ error: 'Not connected to server' });
       return;
     }
 
-    const message: ClientMessage = {
-      type: 'GAME_ACTION',
-      payload: action,
-      requestId: generateRequestId(),
-    };
+    try {
+      const message: ClientMessage = {
+        type: 'GAME_ACTION',
+        payload: action,
+        requestId: generateRequestId(),
+      };
 
-    ws.send(JSON.stringify(message));
+      ws.send(JSON.stringify(message));
+    } catch (err) {
+      console.error('[GameStore] Failed to send GAME_ACTION:', err);
+      set({ error: 'Failed to send action - connection error' });
+    }
   },
 
   sendActionWithResponse: (action: GameAction) => {
     const { ws, connectionStatus } = get();
-    if (connectionStatus !== 'connected' || !ws) {
+    if (connectionStatus !== 'connected' || !ws || ws.readyState !== WebSocket.OPEN) {
       set({ error: 'Not connected to server' });
       return Promise.resolve(null);
     }
@@ -421,36 +446,74 @@ export const useGameStore = create<GameStore>((set, get) => ({
         },
       });
 
-      ws.send(JSON.stringify(message));
+      try {
+        ws.send(JSON.stringify(message));
+      } catch (err) {
+        clearTimeout(timeout);
+        pendingRequests.delete(requestId);
+        console.error('[GameStore] Failed to send GAME_ACTION with response:', err);
+        set({ error: 'Failed to send action - connection error' });
+        resolve(null);
+      }
     });
   },
 
   startGame: () => {
     const { ws, connectionStatus } = get();
-    if (connectionStatus !== 'connected' || !ws) {
+    if (connectionStatus !== 'connected' || !ws || ws.readyState !== WebSocket.OPEN) {
       set({ error: 'Not connected to server' });
       return;
     }
 
-    const message: ClientMessage = {
-      type: 'START_GAME',
-      payload: {},
-      requestId: generateRequestId(),
-    };
+    try {
+      const message: ClientMessage = {
+        type: 'START_GAME',
+        payload: {},
+        requestId: generateRequestId(),
+      };
 
-    ws.send(JSON.stringify(message));
+      ws.send(JSON.stringify(message));
+    } catch (err) {
+      console.error('[GameStore] Failed to send START_GAME:', err);
+      set({ error: 'Failed to start game - connection error' });
+    }
+  },
+
+  enableGoldfishMode: () => {
+    const { ws, connectionStatus } = get();
+    if (connectionStatus !== 'connected' || !ws || ws.readyState !== WebSocket.OPEN) {
+      set({ error: 'Not connected to server' });
+      return;
+    }
+
+    try {
+      const message: ClientMessage = {
+        type: 'GAME_ACTION',
+        payload: { type: 'ENABLE_GOLDFISH' },
+        requestId: generateRequestId(),
+      };
+
+      ws.send(JSON.stringify(message));
+    } catch (err) {
+      console.error('[GameStore] Failed to send ENABLE_GOLDFISH:', err);
+      set({ error: 'Failed to enable goldfish mode - connection error' });
+    }
   },
 
   leaveGame: () => {
     const { ws } = get();
 
-    if (ws) {
-      const message: ClientMessage = {
-        type: 'LEAVE_GAME',
-        payload: {},
-        requestId: generateRequestId(),
-      };
-      ws.send(JSON.stringify(message));
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      try {
+        const message: ClientMessage = {
+          type: 'LEAVE_GAME',
+          payload: {},
+          requestId: generateRequestId(),
+        };
+        ws.send(JSON.stringify(message));
+      } catch (err) {
+        console.error('[GameStore] Failed to send LEAVE_GAME:', err);
+      }
     }
 
     // Clear session storage for reconnection

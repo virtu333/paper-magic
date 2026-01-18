@@ -9,7 +9,7 @@ interface ResolvedDeck {
 }
 
 export function GameLobby() {
-  const { gameId, playerIndex, gameState, leaveGame, submitDeck, startGame } = useGameStore();
+  const { gameId, playerIndex, gameState, leaveGame, submitDeck, startGame, enableGoldfishMode, error, clearError } = useGameStore();
   const [showDeckImport, setShowDeckImport] = useState(false);
   const [deckSubmitted, setDeckSubmitted] = useState(false);
 
@@ -19,6 +19,11 @@ export function GameLobby() {
 
   const player = gameState?.players[playerIndex];
   const opponent = gameState?.players[playerIndex === 0 ? 1 : 0];
+  const isGoldfishMode = gameState?.isGoldfishMode ?? false;
+
+  // Derive deck status from BOTH local state (optimistic) AND server state (reliable after reconnect)
+  // This fixes the bug where deckSubmitted resets to false on reconnect but server still has deck
+  const hasDeck = deckSubmitted || (player?.deck && player.deck.length > 0);
 
   const handleDeckResolved = (deck: ResolvedDeck) => {
     submitDeck(deck);
@@ -32,6 +37,23 @@ export function GameLobby() {
 
   return (
     <div className="space-y-6">
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500 rounded-lg p-4">
+          <div className="flex items-start justify-between">
+            <p className="text-red-400">{error}</p>
+            <button
+              onClick={clearError}
+              className="text-red-300 hover:text-red-100 ml-4"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Game ID Banner */}
       <div className="bg-surface-light rounded-lg p-6 text-center">
         <p className="text-gray-400 text-sm mb-2">Game ID</p>
@@ -89,7 +111,19 @@ export function GameLobby() {
 
         {/* Opponent */}
         <div className="bg-surface-light rounded-lg p-4">
-          {opponent ? (
+          {isGoldfishMode ? (
+            <>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-3 h-3 rounded-full bg-purple-400" />
+                <span className="font-medium text-purple-300">
+                  Goldfish Mode
+                </span>
+              </div>
+              <div className="text-sm text-purple-400">
+                Solo practice - no opponent
+              </div>
+            </>
+          ) : opponent ? (
             <>
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-3 h-3 rounded-full bg-green-400" />
@@ -120,16 +154,22 @@ export function GameLobby() {
                   Waiting for opponent...
                 </span>
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-500 mb-3">
                 Share the game ID and password
               </div>
+              <button
+                onClick={enableGoldfishMode}
+                className="w-full py-2 px-3 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors"
+              >
+                Play Solo (Goldfish)
+              </button>
             </>
           )}
         </div>
       </div>
 
       {/* Deck Import Section */}
-      {!deckSubmitted && (
+      {!hasDeck && (
         <div className="bg-surface-light rounded-lg p-6">
           {showDeckImport ? (
             <>
@@ -156,9 +196,24 @@ export function GameLobby() {
       )}
 
       {/* Ready Status */}
-      {deckSubmitted && opponent && (
+      {hasDeck && (isGoldfishMode || opponent) && (
         <div className="bg-surface-light rounded-lg p-6 text-center">
-          {opponent.deck && opponent.deck.length > 0 ? (
+          {isGoldfishMode ? (
+            <>
+              <p className="text-purple-400 font-medium mb-2">Ready to goldfish!</p>
+              <p className="text-gray-400 text-sm">
+                Practice with your deck in solo mode
+              </p>
+              {playerIndex === 0 && (
+                <button
+                  onClick={startGame}
+                  className="mt-4 py-2 px-6 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-500 transition-colors"
+                >
+                  Start Goldfish
+                </button>
+              )}
+            </>
+          ) : opponent?.deck && opponent.deck.length > 0 ? (
             <>
               <p className="text-green-400 font-medium mb-2">Both players ready!</p>
               <p className="text-gray-400 text-sm">

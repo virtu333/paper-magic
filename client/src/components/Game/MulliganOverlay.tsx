@@ -5,6 +5,7 @@ import { Card } from './Card';
 interface MulliganOverlayProps {
   player: Player;
   opponent: Player | null;
+  isGoldfishMode?: boolean;
   onKeep: (cardsToBottom: string[]) => void;
   onMulligan: () => void;
 }
@@ -12,6 +13,7 @@ interface MulliganOverlayProps {
 export function MulliganOverlay({
   player,
   opponent,
+  isGoldfishMode = false,
   onKeep,
   onMulligan,
 }: MulliganOverlayProps) {
@@ -154,13 +156,20 @@ export function MulliganOverlay({
               </span>
             )}
           </h2>
-          <div className="text-gray-400 text-sm">
-            {opponent?.hasKeptHand ? (
-              <span className="text-green-400">Opponent has kept</span>
-            ) : (
-              <span className="text-yellow-400">Opponent deciding...</span>
-            )}
-          </div>
+          {!isGoldfishMode && (
+            <div className="text-gray-400 text-sm">
+              {opponent?.hasKeptHand ? (
+                <span className="text-green-400">Opponent has kept</span>
+              ) : (
+                <span className="text-yellow-400">Opponent deciding...</span>
+              )}
+            </div>
+          )}
+          {isGoldfishMode && (
+            <div className="text-purple-400 text-sm">
+              Solo practice mode
+            </div>
+          )}
         </div>
 
         {/* Hand display */}

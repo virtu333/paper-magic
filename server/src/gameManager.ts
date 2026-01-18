@@ -399,6 +399,9 @@ class GameManager {
           payload: { gameState: sanitizedState } as StateUpdatePayload,
         };
         conn.ws.send(JSON.stringify(message));
+        console.log(`[GameManager] Sent STATE_UPDATE to player ${conn.playerIndex + 1}`);
+      } else {
+        console.warn(`[GameManager] Skipped player ${conn.playerIndex + 1} - socket not open (readyState: ${conn.ws.readyState})`);
       }
     }
   }
@@ -467,30 +470,49 @@ class GameManager {
     const player0 = room.state.players[0];
     const player1 = room.state.players[1];
 
-    if (!player0 || !player1) {
-      return {
-        type: 'ERROR',
-        payload: { code: 'WAITING_FOR_PLAYER', message: 'Waiting for opponent to join' } as ErrorPayload,
-      };
+    // In goldfish mode, only check player 0 exists and has a deck
+    if (room.state.isGoldfishMode) {
+      if (!player0) {
+        return {
+          type: 'ERROR',
+          payload: { code: 'INVALID_STATE', message: 'Player not found' } as ErrorPayload,
+        };
+      }
+      if (player0.deck.length === 0) {
+        return {
+          type: 'ERROR',
+          payload: { code: 'DECK_NOT_SUBMITTED', message: 'You must submit a deck' } as ErrorPayload,
+        };
+      }
+    } else {
+      // Normal 2-player mode
+      if (!player0 || !player1) {
+        return {
+          type: 'ERROR',
+          payload: { code: 'WAITING_FOR_PLAYER', message: 'Waiting for opponent to join' } as ErrorPayload,
+        };
+      }
+
+      if (player0.deck.length === 0 || player1.deck.length === 0) {
+        return {
+          type: 'ERROR',
+          payload: { code: 'DECK_NOT_SUBMITTED', message: 'Both players must submit decks' } as ErrorPayload,
+        };
+      }
     }
 
-    if (player0.deck.length === 0 || player1.deck.length === 0) {
-      return {
-        type: 'ERROR',
-        payload: { code: 'DECK_NOT_SUBMITTED', message: 'Both players must submit decks' } as ErrorPayload,
-      };
-    }
-
-    // Shuffle both decks
+    // Shuffle decks and draw opening hands
     this.shuffleArray(player0.deck);
-    this.shuffleArray(player1.deck);
+    if (player1 && player1.deck.length > 0) {
+      this.shuffleArray(player1.deck);
+    }
 
     // Draw opening hands (7 cards each)
     for (let i = 0; i < 7; i++) {
       if (player0.deck.length > 0) {
         player0.hand.push(player0.deck.shift()!);
       }
-      if (player1.deck.length > 0) {
+      if (player1 && player1.deck.length > 0) {
         player1.hand.push(player1.deck.shift()!);
       }
     }
@@ -589,6 +611,46 @@ class GameManager {
 
     // Process the action based on type
     switch (action.type) {
+      case 'ENABLE_GOLDFISH': {
+        // Can only enable goldfish mode in lobby phase with no opponent
+        if (room.state.phase !== 'lobby') {
+          return {
+            type: 'ERROR',
+            payload: { code: 'INVALID_PHASE', message: 'Can only enable goldfish mode in lobby' } as ErrorPayload,
+          };
+        }
+        if (room.state.players[1] !== null) {
+          return {
+            type: 'ERROR',
+            payload: { code: 'OPPONENT_PRESENT', message: 'Cannot enable goldfish mode with opponent present' } as ErrorPayload,
+          };
+        }
+
+        room.state.isGoldfishMode = true;
+
+        // Create a dummy opponent player with empty zones
+        const dummyOpponent = {
+          id: 'goldfish-opponent',
+          name: 'Goldfish Opponent',
+          deck: [],
+          hand: [],
+          battlefield: [],
+          graveyard: [],
+          exileActive: [],
+          exilePermanent: [],
+          sideboard: [],
+          life: [{ delta: 0, total: 20, timestamp: Date.now() }],
+          counters: { poison: 0, energy: 0, experience: 0 },
+          mulliganCount: 0,
+          hasKeptHand: true, // Always ready
+          readyForNextGame: true, // Always ready
+        };
+        room.state.players[1] = dummyOpponent;
+
+        console.log(`[GameManager] Goldfish mode enabled for game ${room.state.id}`);
+        break;
+      }
+
       case 'DRAW_CARDS': {
         const count = action.count || 1;
         for (let i = 0; i < count && player.deck.length > 0; i++) {
@@ -911,6 +973,18 @@ class GameManager {
       case 'MULLIGAN_KEEP': {
         player.hasKeptHand = true;
 
+        // In goldfish mode, transition immediately when player 0 keeps
+        if (room.state.isGoldfishMode && playerIndex === 0) {
+          room.state.phase = 'playing';
+          room.state.turn = {
+            number: 1,
+            activePlayer: 0,
+            phase: 'Main',
+          };
+          console.log(`[GameManager] Goldfish mode: player kept, starting game ${room.state.id}`);
+          break;
+        }
+
         // Check if both players have kept - transition to playing phase
         const otherPlayer = room.state.players[playerIndex === 0 ? 1 : 0];
         if (otherPlayer?.hasKeptHand) {
@@ -1086,6 +1160,12 @@ class GameManager {
       case 'READY_FOR_NEXT_GAME': {
         player.readyForNextGame = true;
 
+        // In goldfish mode, skip opponent ready check
+        if (room.state.isGoldfishMode) {
+          this.startNextGame(room);
+          break;
+        }
+
         // Check if both players are ready
         const otherPlayer = room.state.players[playerIndex === 0 ? 1 : 0];
         if (otherPlayer?.readyForNextGame) {
@@ -1134,9 +1214,11 @@ class GameManager {
 
       case 'PASS_TURN': {
         const currentTurn = room.state.turn;
+        // In goldfish mode, always keep activePlayer as 0
+        const nextActivePlayer = room.state.isGoldfishMode ? 0 : (currentTurn.activePlayer === 0 ? 1 : 0);
         room.state.turn = {
           number: currentTurn.number + 1,
-          activePlayer: currentTurn.activePlayer === 0 ? 1 : 0,
+          activePlayer: nextActivePlayer,
           phase: 'Main',
         };
         this.addLogEntry(room, playerIndex, 'ended their turn', 'PASS_TURN');
@@ -1588,6 +1670,12 @@ class GameManager {
       for (let i = 0; i < 7 && player.deck.length > 0; i++) {
         player.hand.push(player.deck.shift()!);
       }
+    }
+
+    // In goldfish mode, set dummy opponent as always ready
+    if (room.state.isGoldfishMode && player1) {
+      player1.hasKeptHand = true;
+      player1.readyForNextGame = true;
     }
 
     // Set game phase to mulligan

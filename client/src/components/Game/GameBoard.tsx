@@ -37,6 +37,7 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
   const myPlayer = gameState.players.find(p => p?.id === playerId);
   const opponent = gameState.players.find(p => p && p.id !== playerId);
   const myPlayerIndex: 0 | 1 = gameState.players[0]?.id === playerId ? 0 : 1;
+  const isGoldfishMode = gameState.isGoldfishMode;
 
   if (!myPlayer) {
     return (
@@ -436,27 +437,60 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
         {/* Opponent area (top) */}
         {opponent ? (
           <div className="flex-[0.8] min-h-0">
-            <PlayerArea
-              player={opponent}
-              isOpponent={true}
-              onPeekOpponentLibrary={handlePeekOpponentLibrary}
-              onCardDoubleClick={handleCardDoubleTap}
-              onCardTap={handleCardTap}
-              onCardUntap={handleCardUntap}
-              onCardFlip={handleCardFlip}
-              onCardTransform={handleCardTransform}
-              onCardMoveTo={handleCardMoveTo}
-              onCardPutOnTop={handleCardPutOnTop}
-              onCardPutOnBottom={handleCardPutOnBottom}
-              onCardAddCounter={handleCardAddCounter}
-              onCardRemoveCounter={handleCardRemoveCounter}
-              onDestroyToken={handleDestroyToken}
-              onCardAttachTo={handleCardAttachTo}
-              onCardDetach={handleCardDetach}
-              onBringToFront={handleBringToFront}
-              onSendToBack={handleSendToBack}
-              allBattlefieldCards={allBattlefieldCards}
-            />
+            {isGoldfishMode ? (
+              <div className="h-full flex flex-col">
+                <div className="px-4 py-2 bg-purple-900/30 border-b border-purple-700 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-purple-400" />
+                  <span className="text-purple-300 text-sm font-medium">Goldfish Opponent</span>
+                  <span className="text-purple-400/60 text-xs ml-auto">Solo practice mode</span>
+                </div>
+                <div className="flex-1">
+                  <PlayerArea
+                    player={opponent}
+                    isOpponent={true}
+                    onPeekOpponentLibrary={handlePeekOpponentLibrary}
+                    onCardDoubleClick={handleCardDoubleTap}
+                    onCardTap={handleCardTap}
+                    onCardUntap={handleCardUntap}
+                    onCardFlip={handleCardFlip}
+                    onCardTransform={handleCardTransform}
+                    onCardMoveTo={handleCardMoveTo}
+                    onCardPutOnTop={handleCardPutOnTop}
+                    onCardPutOnBottom={handleCardPutOnBottom}
+                    onCardAddCounter={handleCardAddCounter}
+                    onCardRemoveCounter={handleCardRemoveCounter}
+                    onDestroyToken={handleDestroyToken}
+                    onCardAttachTo={handleCardAttachTo}
+                    onCardDetach={handleCardDetach}
+                    onBringToFront={handleBringToFront}
+                    onSendToBack={handleSendToBack}
+                    allBattlefieldCards={allBattlefieldCards}
+                  />
+                </div>
+              </div>
+            ) : (
+              <PlayerArea
+                player={opponent}
+                isOpponent={true}
+                onPeekOpponentLibrary={handlePeekOpponentLibrary}
+                onCardDoubleClick={handleCardDoubleTap}
+                onCardTap={handleCardTap}
+                onCardUntap={handleCardUntap}
+                onCardFlip={handleCardFlip}
+                onCardTransform={handleCardTransform}
+                onCardMoveTo={handleCardMoveTo}
+                onCardPutOnTop={handleCardPutOnTop}
+                onCardPutOnBottom={handleCardPutOnBottom}
+                onCardAddCounter={handleCardAddCounter}
+                onCardRemoveCounter={handleCardRemoveCounter}
+                onDestroyToken={handleDestroyToken}
+                onCardAttachTo={handleCardAttachTo}
+                onCardDetach={handleCardDetach}
+                onBringToFront={handleBringToFront}
+                onSendToBack={handleSendToBack}
+                allBattlefieldCards={allBattlefieldCards}
+              />
+            )}
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-gray-600">
@@ -528,13 +562,17 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
           )}
           {/* Turn indicator */}
           <div className={`px-3 py-1 rounded-lg font-medium ${
-            gameState.turn?.activePlayer === myPlayerIndex
-              ? 'bg-green-600/30 text-green-400 border border-green-600'
-              : 'bg-gray-700/30 text-gray-400 border border-gray-600'
+            isGoldfishMode
+              ? 'bg-purple-600/30 text-purple-400 border border-purple-600'
+              : gameState.turn?.activePlayer === myPlayerIndex
+                ? 'bg-green-600/30 text-green-400 border border-green-600'
+                : 'bg-gray-700/30 text-gray-400 border border-gray-600'
           }`}>
-            {gameState.turn?.activePlayer === myPlayerIndex
+            {isGoldfishMode
               ? "Your Turn"
-              : `${opponent?.name || "Opponent"}'s Turn`}
+              : gameState.turn?.activePlayer === myPlayerIndex
+                ? "Your Turn"
+                : `${opponent?.name || "Opponent"}'s Turn`}
             {' '}({gameState.turn?.number || 1})
           </div>
         </div>
@@ -650,6 +688,7 @@ export function GameBoard({ gameState, playerId }: GameBoardProps) {
         <MulliganOverlay
           player={myPlayer}
           opponent={opponent ?? null}
+          isGoldfishMode={isGoldfishMode}
           onKeep={handleMulliganKeep}
           onMulligan={handleMulliganAgain}
         />

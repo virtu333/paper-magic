@@ -51,6 +51,9 @@ export interface GameState {
   gameResults: GameResult[];     // Results of completed games
   turn: TurnState;
 
+  // Goldfish mode (single-player practice)
+  isGoldfishMode: boolean;
+
   // Timestamps
   createdAt: number;
   lastAction: number;
@@ -78,6 +81,7 @@ export function createGameState(id: string, passwordHash: string): GameState {
       activePlayer: 0,
       phase: 'Pre-game',
     },
+    isGoldfishMode: false,
     createdAt: Date.now(),
     lastAction: Date.now(),
     actionHistory: [],

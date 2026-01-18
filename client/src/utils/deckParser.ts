@@ -155,10 +155,12 @@ export function getUniqueCardNames(deck: ParsedDeck): string[] {
   return Array.from(names);
 }
 
+export type DeckFormat = 'constructed' | 'limited';
+
 /**
  * Validate deck has correct card counts
  */
-export function validateDeckSize(deck: ParsedDeck): {
+export function validateDeckSize(deck: ParsedDeck, format: DeckFormat = 'constructed'): {
   valid: boolean;
   mainDeckCount: number;
   sideboardCount: number;
@@ -168,9 +170,10 @@ export function validateDeckSize(deck: ParsedDeck): {
   const sideboardCount = deck.sideboard.reduce((sum, e) => sum + e.count, 0);
   const errors: string[] = [];
 
-  // Standard constructed deck rules
-  if (mainDeckCount < 60) {
-    errors.push(`Main deck has ${mainDeckCount} cards (minimum 60)`);
+  const minMainDeck = format === 'limited' ? 40 : 60;
+
+  if (mainDeckCount < minMainDeck) {
+    errors.push(`Main deck has ${mainDeckCount} cards (minimum ${minMainDeck})`);
   }
 
   if (sideboardCount > 15) {

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { parseDeck, getUniqueCardNames, validateDeckSize, type ParsedDeck } from '../../utils/deckParser';
+import { parseDeck, getUniqueCardNames, validateDeckSize, type ParsedDeck, type DeckFormat } from '../../utils/deckParser';
 import { resolveCards, type ResolvedCard } from '../../services/api';
 import { preloadDeckImages } from '../../utils/imagePreloader';
 
@@ -15,6 +15,7 @@ type ImportState = 'input' | 'loading' | 'preview' | 'preloading';
 export function DeckImport({ onDeckResolved }: DeckImportProps) {
   const [state, setState] = useState<ImportState>('input');
   const [deckText, setDeckText] = useState('');
+  const [deckFormat, setDeckFormat] = useState<DeckFormat>('constructed');
   const [parsedDeck, setParsedDeck] = useState<ParsedDeck | null>(null);
   const [resolvedCards, setResolvedCards] = useState<Map<string, ResolvedCard>>(new Map());
   const [notFoundCards, setNotFoundCards] = useState<string[]>([]);
@@ -35,7 +36,7 @@ export function DeckImport({ onDeckResolved }: DeckImportProps) {
     }
 
     // Validate deck size
-    const validation = validateDeckSize(parsed);
+    const validation = validateDeckSize(parsed, deckFormat);
     if (!validation.valid) {
       setError(validation.errors.join('. '));
       return;
@@ -73,7 +74,7 @@ export function DeckImport({ onDeckResolved }: DeckImportProps) {
       setError(err instanceof Error ? err.message : 'Failed to resolve cards');
       setState('input');
     }
-  }, [deckText]);
+  }, [deckText, deckFormat]);
 
   const handleConfirm = useCallback(async () => {
     if (!parsedDeck || !onDeckResolved) return;
@@ -118,6 +119,34 @@ export function DeckImport({ onDeckResolved }: DeckImportProps) {
   if (state === 'input') {
     return (
       <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Deck Format
+          </label>
+          <div className="flex gap-1 p-1 bg-surface rounded-lg w-fit">
+            <button
+              onClick={() => setDeckFormat('constructed')}
+              className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                deckFormat === 'constructed'
+                  ? 'bg-accent text-surface'
+                  : 'bg-transparent text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              Constructed (60+)
+            </button>
+            <button
+              onClick={() => setDeckFormat('limited')}
+              className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                deckFormat === 'limited'
+                  ? 'bg-accent text-surface'
+                  : 'bg-transparent text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              Limited (40+)
+            </button>
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Paste your decklist

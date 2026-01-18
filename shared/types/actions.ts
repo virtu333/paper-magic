@@ -73,6 +73,7 @@ export type GameAction =
   | { type: 'SWAP_SIDEBOARD'; mainDeckIndex: number; sideboardIndex: number }
   | { type: 'SET_TURN_PHASE'; phase: string }
   | { type: 'PASS_TURN' }
+  | { type: 'ENABLE_GOLDFISH' }
 
   // Undo/Redo
   | { type: 'UNDO' }
