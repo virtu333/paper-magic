@@ -75,6 +75,9 @@ VITE_WS_URL=ws://localhost:3001
 ## Current Status
 Phase 3 complete. Core gameplay fully functional. See CHANGELOG.md for feature history.
 
+**Recent additions:**
+- Goldfish mode (solo practice) - enables single-player deck testing without an opponent
+
 **Future/Optional:**
 - Smart alignment (snap cards to rows)
 
